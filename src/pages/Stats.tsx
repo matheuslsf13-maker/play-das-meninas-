@@ -44,8 +44,8 @@ export default function Stats() {
   const selected = playerId || ranked[0]?.player_id || ''
   const s = stats.get(selected) ?? emptyStat(selected)
   const dateOfSession = new Map(data.sessions.map((x) => [x.id, x.date]))
-  const dayTitles = [...streaks.winnerOf.entries()].filter(
-    ([sid, id]) => id === selected && (period === 'all' || monthOf(dateOfSession.get(sid) ?? '') === period),
+  const dayTitles = [...streaks.winnersOf.entries()].filter(
+    ([sid, ids]) => ids.includes(selected) && (period === 'all' || monthOf(dateOfSession.get(sid) ?? '') === period),
   ).length
   const curStreak = streaks.current.get(selected) ?? 0
   const bestStreak = streaks.best.get(selected) ?? 0

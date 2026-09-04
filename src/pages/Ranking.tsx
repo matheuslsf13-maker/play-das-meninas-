@@ -10,6 +10,17 @@ import {
   winRate,
   type PlayerStat,
 } from '../lib/stats'
+
+/** Empate de verdade (mesmos pontos, saldo e vitorias) fica na mesma posicao. */
+function positionsOf(rows: PlayerStat[]): number[] {
+  const pos: number[] = []
+  rows.forEach((s, i) => {
+    const ant = rows[i - 1]
+    const igual = ant && ant.points === s.points && balance(ant) === balance(s) && ant.wins === s.wins
+    pos.push(igual ? pos[i - 1] : i + 1)
+  })
+  return pos
+}
 import { applyBonuses, computeStreaks, isMaxLevel, onFire, STREAK_LADDER, streakBonus, streakLevel } from '../lib/streaks'
 import { useStore } from '../lib/store'
 import { monthLabel, monthOf, todayISO } from '../lib/types'
@@ -42,6 +53,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
     return { games: ms.length, days, players: rows.length }
   }, [data, activeMonth, rows.length])
 
+  const posicoes = useMemo(() => positionsOf(rows), [rows])
   const podium = rows.slice(0, 3)
   const order = [1, 0, 2] // 2º, 1º, 3º na tela
 
@@ -65,7 +77,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
               {order.map((idx) => {
                 const s = podium[idx]
                 if (!s) return <div key={idx} />
-                const pos = idx + 1
+                const pos = posicoes[idx] ?? idx + 1
                 return (
                   <div className={`slot p${pos}`} key={s.player_id}>
                     <Avatar player={playerById(s.player_id)} size={pos === 1 ? 66 : 52} />
@@ -196,6 +208,7 @@ function streakBonusOf(streak: number): number {
 export function RankTable({ rows, fire }: { rows: PlayerStat[]; fire?: Map<string, number> }) {
   const { nameOf, playerById } = useStore()
   const showBonus = rows.some((r) => r.bonus > 0)
+  const posicoes = positionsOf(rows)
   return (
     <div className="scroll-x">
       <table className="table">
@@ -217,7 +230,7 @@ export function RankTable({ rows, fire }: { rows: PlayerStat[]; fire?: Map<strin
             const bal = balance(s)
             return (
               <tr key={s.player_id}>
-                <td className={`rank-pos top${i + 1}`} style={{ fontWeight: 800 }}>{i + 1}</td>
+                <td className={`rank-pos top${posicoes[i]}`} style={{ fontWeight: 800 }}>{posicoes[i]}</td>
                 <td>
                   <div className="row" style={{ gap: 8 }}>
                     <Avatar player={playerById(s.player_id)} size={28} />

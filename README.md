@@ -136,7 +136,12 @@ a **Rainha do Play** é quem vence 10 sextas seguidas.
 
 O bônus é creditado no play que estende a sequência, então ele entra no mês
 daquele play. **Perder o dia ou faltar ao play zera a sequência** — para manter o
-fogo aceso é preciso estar lá e vencer.
+fogo aceso é preciso estar lá e vencer. Quem falta também não pontua naquela
+semana: os pontos já conquistados ficam, mas nada é somado.
+
+Se duas jogadoras **empatam de verdade** no topo do dia (mesmos pontos, saldo de
+games e vitórias), as duas são campeãs do dia: ambas mantêm a sequência e
+recebem o bônus. Desempatar por ordem alfabética seria sorte, não mérito.
 
 ## Como as duplas são montadas
 

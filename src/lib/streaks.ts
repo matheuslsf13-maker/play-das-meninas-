@@ -1,4 +1,4 @@
-import { computeStats, playedMatches, rankPlayers, type PlayerStat } from './stats'
+import { balance, computeStats, playedMatches, rankPlayers, type PlayerStat } from './stats'
 import type { AppData } from './types'
 
 /**
@@ -57,8 +57,8 @@ export type Streaks = {
   current: Map<string, number>
   /** Maior sequencia que cada jogadora ja teve. */
   best: Map<string, number>
-  /** Campea de cada play finalizado. */
-  winnerOf: Map<string, string>
+  /** Campea(s) de cada play finalizado -- pode haver empate no topo. */
+  winnersOf: Map<string, string[]>
 }
 
 /**
@@ -74,32 +74,41 @@ export function computeStreaks(data: AppData): Streaks {
   const current = new Map<string, number>()
   const best = new Map<string, number>()
   const awards: StreakAward[] = []
-  const winnerOf = new Map<string, string>()
+  const winnersOf = new Map<string, string[]>()
   const nameOf = (id: string) => data.players.find((p) => p.id === id)?.name ?? id
 
   for (const s of finished) {
     const ms = playedMatches(data, { sessionId: s.id })
     if (ms.length === 0) continue
     const rank = rankPlayers(computeStats(ms), nameOf)
-    const champion = rank[0]
-    if (!champion) continue
-    winnerOf.set(s.id, champion.player_id)
+    const top = rank[0]
+    if (!top) continue
+
+    // empate real no topo (mesmos pontos, saldo e vitorias) da o dia as duas:
+    // desempatar por ordem alfabetica seria sorte, nao merito
+    const champions = rank.filter(
+      (x) => x.points === top.points && balance(x) === balance(top) && x.wins === top.wins,
+    )
+    const isChampion = new Set(champions.map((c) => c.player_id))
+    winnersOf.set(s.id, [...isChampion])
 
     // quem nao venceu o dia zera a sequencia -- inclusive quem faltou ao play
     for (const p of data.players) {
-      const next = p.id === champion.player_id ? (current.get(p.id) ?? 0) + 1 : 0
+      const next = isChampion.has(p.id) ? (current.get(p.id) ?? 0) + 1 : 0
       current.set(p.id, next)
       if (next > (best.get(p.id) ?? 0)) best.set(p.id, next)
     }
 
-    const streak = current.get(champion.player_id) ?? 1
-    const bonus = streakBonus(streak)
-    if (bonus > 0) {
-      awards.push({ session_id: s.id, date: s.date, player_id: champion.player_id, streak, bonus })
+    for (const champion of champions) {
+      const streak = current.get(champion.player_id) ?? 1
+      const bonus = streakBonus(streak)
+      if (bonus > 0) {
+        awards.push({ session_id: s.id, date: s.date, player_id: champion.player_id, streak, bonus })
+      }
     }
   }
 
-  return { awards, current, best, winnerOf }
+  return { awards, current, best, winnersOf }
 }
 
 /** Soma os bonus do periodo na pontuacao do ranking. */
