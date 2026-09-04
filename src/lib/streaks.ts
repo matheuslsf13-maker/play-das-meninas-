@@ -11,17 +11,35 @@ export function streakBonus(streak: number): number {
   if (streak === 2) return 2
   if (streak === 3) return 3
   if (streak === 4) return 5
-  return 7
+  if (streak < 10) return 7
+  return 10
 }
 
 export type StreakLevel = { emoji: string; title: string }
+
+/** A escada de status, do primeiro fogo ate o topo. */
+export const STREAK_LADDER = [
+  { from: 2, to: 2, emoji: '🔥', title: 'Em chamas', bonus: 2 },
+  { from: 3, to: 3, emoji: '🔥🔥', title: 'Pegando fogo', bonus: 3 },
+  { from: 4, to: 4, emoji: '🔥🔥🔥', title: 'Imparável', bonus: 5 },
+  { from: 5, to: 9, emoji: '👑🔥', title: 'Lenda do play', bonus: 7 },
+  { from: 10, to: null, emoji: '👑💎', title: 'Rainha do Play', bonus: 10 },
+] as const
 
 export function streakLevel(streak: number): StreakLevel | null {
   if (streak <= 1) return null
   if (streak === 2) return { emoji: '🔥', title: 'Em chamas' }
   if (streak === 3) return { emoji: '🔥🔥', title: 'Pegando fogo' }
   if (streak === 4) return { emoji: '🔥🔥🔥', title: 'Imparável' }
-  return { emoji: '👑🔥', title: 'Lenda do play' }
+  if (streak < 10) return { emoji: '👑🔥', title: 'Lenda do play' }
+  return { emoji: '👑💎', title: 'Rainha do Play' }
+}
+
+/** O status maximo: 10 plays seguidos vencendo. */
+export const MAX_STREAK = 10
+
+export function isMaxLevel(streak: number): boolean {
+  return streak >= MAX_STREAK
 }
 
 export type StreakAward = {

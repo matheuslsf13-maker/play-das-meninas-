@@ -14,10 +14,10 @@ estatísticas individuais, de duplas e de confrontos.
 - **Pontuação do cartaz** — partida até 4 pontos, sem empate:
   `4x0 = 4 pts · 4x1 = 3 pts · 4x2 = 2 pts · 4x3 = 1 pt` (a derrota não pontua).
   Dá para mudar o "vai até" na criação do play.
-- **Bônus "em chamas" 🔥** — quem vence o ranking do dia em plays seguidos ganha
-  ponto extra no mês: 2 seguidos `+2`, 3 seguidos `+3`, 4 seguidos `+5`,
-  5 ou mais `+7`. O app mostra o selo de fogo ao lado do nome, um card
-  "Em chamas" no ranking e avisa na hora de fechar o dia.
+- **Bônus "em chamas" 🔥** — quem vence o play (a sexta) em sequência ganha ponto
+  extra no mês: 2 seguidos `+2`, 3 `+3`, 4 `+5`, 5 a 9 `+7` e, no topo da escada,
+  **10 ou mais** vira 👑💎 **Rainha do Play** com `+10` por play. O app mostra o
+  selo ao lado do nome, um card "Em chamas" no ranking e avisa ao fechar o dia.
 - **Ranking do dia e do mês** — pódio com as fotos do top 3 e classificação
   completa (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento).
 - **Finalizar o dia** — soma os pontos ao ranking do mês, mostra o ranking do dia
@@ -104,7 +104,11 @@ Vencer o **ranking do dia** (1º lugar do play) em sequência acumula fogo:
 | 2 | 🔥 Em chamas | +2 pontos |
 | 3 | 🔥🔥 Pegando fogo | +3 pontos |
 | 4 | 🔥🔥🔥 Imparável | +5 pontos |
-| 5 ou mais | 👑🔥 Lenda do play | +7 pontos por play |
+| 5 a 9 | 👑🔥 Lenda do play | +7 pontos por play |
+| **10 ou mais** | **👑💎 Rainha do Play** | **+10 pontos por play** |
+
+Como o play acontece toda sexta, cada degrau da escada é uma semana vencendo —
+a **Rainha do Play** é quem vence 10 sextas seguidas.
 
 O bônus é creditado no play que estende a sequência, então ele entra no mês
 daquele play. **Perder o dia ou faltar ao play zera a sequência** — para manter o

@@ -379,3 +379,12 @@ label.field > span {
 @media (min-width: 560px) { .modal-bg { align-items: center; } }
 
 hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
+
+/* status maximo: 10 plays seguidos vencendo */
+.row.queen {
+  background: linear-gradient(135deg, #fff6d9, #ffe9b0);
+  border: 1px solid #f0c65a;
+  border-radius: 14px;
+  padding: 8px 10px;
+}
+.row.queen .badge.open { background: #fff; color: #8a6300; }

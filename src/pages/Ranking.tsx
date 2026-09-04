@@ -10,7 +10,7 @@ import {
   winRate,
   type PlayerStat,
 } from '../lib/stats'
-import { applyBonuses, computeStreaks, onFire, streakBonus, streakLevel } from '../lib/streaks'
+import { applyBonuses, computeStreaks, isMaxLevel, onFire, STREAK_LADDER, streakBonus, streakLevel } from '../lib/streaks'
 import { useStore } from '../lib/store'
 import { monthLabel, monthOf, todayISO } from '../lib/types'
 
@@ -94,26 +94,29 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
           <div className="stack">
             {fire.map((f) => {
               const lvl = streakLevel(f.streak)
+              const max = isMaxLevel(f.streak)
               return (
-                <div className="row" key={f.player_id}>
-                  <Avatar player={playerById(f.player_id)} size={38} />
+                <div className={`row${max ? ' queen' : ''}`} key={f.player_id}>
+                  <Avatar player={playerById(f.player_id)} size={max ? 46 : 38} />
                   <div className="grow">
                     <div style={{ fontWeight: 800 }} className="ellipsis">
                       {nameOf(f.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {lvl?.title} · venceu os {f.streak} últimos plays
+                      {lvl?.title} · venceu os {f.streak} últimos plays · +{streakBonusOf(f.streak)} se ganhar de novo
                     </div>
                   </div>
-                  <span className="badge open nowrap">+{streakBonusOf(f.streak)} se ganhar de novo</span>
+                  <span className="badge open nowrap" title={`+${streakBonusOf(f.streak)} pontos se vencer o próximo play`}>
+                    +{streakBonusOf(f.streak)}
+                  </span>
                 </div>
               )
             })}
           </div>
           <p className="tiny muted" style={{ marginBottom: 0 }}>
-            Bônus por vencer o ranking do dia em sequência: 2 seguidas <strong>+2</strong>,
-            3 seguidas <strong>+3</strong>, 4 seguidas <strong>+5</strong>, 5 ou mais <strong>+7</strong> pontos.
-            Perder o dia ou faltar ao play zera a sequência.
+            Bônus por vencer o play em sequência: 2 seguidos <strong>+2</strong>,
+            3 <strong>+3</strong>, 4 <strong>+5</strong>, 5 a 9 <strong>+7</strong> e
+            10 ou mais <strong>+10</strong> pontos. Perder o play ou faltar zera a sequência.
           </p>
         </div>
       )}
@@ -152,23 +155,34 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
         <hr className="sep" style={{ borderColor: 'rgba(255,255,255,.15)' }} />
         <div className="section-title" style={{ marginBottom: 6 }}>🔥 Bônus em chamas</div>
         <p className="small" style={{ color: '#c9c6e0', marginTop: 0, marginBottom: 8 }}>
-          Venceu o ranking do dia várias vezes seguidas? Ganha ponto extra no mês:
+          Venceu o play várias sextas seguidas? Ganha ponto extra no mês:
         </p>
         <div className="grid2" style={{ gap: 8 }}>
-          {[
-            { n: '2 seguidos', e: '🔥', b: 2 },
-            { n: '3 seguidos', e: '🔥🔥', b: 3 },
-            { n: '4 seguidos', e: '🔥🔥🔥', b: 5 },
-            { n: '5 ou mais', e: '👑🔥', b: 7 },
-          ].map((x) => (
-            <div key={x.n} style={{ background: 'rgba(255,255,255,.08)', borderRadius: 12, padding: '8px 10px' }}>
-              <div className="tiny" style={{ fontWeight: 800, letterSpacing: '.5px' }}>{x.e} {x.n.toUpperCase()}</div>
-              <div style={{ fontSize: 20, fontWeight: 900 }}>+{x.b} <span style={{ fontSize: 11 }}>PONTOS</span></div>
-            </div>
-          ))}
+          {STREAK_LADDER.map((x) => {
+            const faixa = x.to === null ? `${x.from} ou mais` : x.from === x.to ? `${x.from} seguidos` : `${x.from} a ${x.to}`
+            const top = x.to === null
+            return (
+              <div
+                key={x.title}
+                style={{
+                  background: top ? 'linear-gradient(135deg, #f5c518, #e08e00)' : 'rgba(255,255,255,.08)',
+                  color: top ? '#3d2a00' : undefined,
+                  borderRadius: 12,
+                  padding: '8px 10px',
+                  gridColumn: top ? '1 / -1' : undefined,
+                }}
+              >
+                <div className="tiny" style={{ fontWeight: 800, letterSpacing: '.5px' }}>
+                  {x.emoji} {faixa.toUpperCase()} · {x.title.toUpperCase()}
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>+{x.bonus} <span style={{ fontSize: 11 }}>PONTOS</span></div>
+              </div>
+            )
+          })}
         </div>
         <p className="tiny" style={{ color: '#9d99bb', marginBottom: 0 }}>
-          Perder o dia ou faltar ao play zera a sequência — tem que estar lá e vencer!
+          Perder o play ou faltar zera a sequência — tem que estar lá e vencer!
+          Como o play é toda sexta, cada degrau é uma semana vencendo.
         </p>
       </div>
     </>
