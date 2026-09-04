@@ -37,13 +37,13 @@ export function dayRankingText(
   title: string,
   rows: PlayerStat[],
   nameOf: (id: string) => string,
-  award?: { player_id: string; streak: number; pending: number },
+  award?: { player_id: string; streak: number; value: number },
 ): string {
   const head = `🎾 ${title.toUpperCase()} — ${dateLabel(date)}\nRanking do dia:\n`
   const body = rows.map((s, i) => line(i, nameOf(s.player_id), s)).join('\n')
   const lvl = award ? streakLevel(award.streak) : null
   const extra = award && lvl
-    ? `\n\n${lvl.emoji} ${nameOf(award.player_id)} está ${lvl.title.toUpperCase()}: ${award.streak} sextas seguidas vencendo, com ${award.pending} pontos de bônus acumulado!`
+    ? `\n\n${lvl.emoji} ${nameOf(award.player_id)} é ${lvl.title.toUpperCase()}: ${award.streak} sextas seguidas no pódio, status valendo ${award.value} pontos!`
     : ''
   return `${head}\n${body}${extra}`
 }

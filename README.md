@@ -20,10 +20,10 @@ estatísticas individuais, de duplas e de confrontos.
 - **Pontuação do cartaz** — partida até 4 pontos, sem empate:
   `4x0 = 4 pts · 4x1 = 3 pts · 4x2 = 2 pts · 4x3 = 1 pt` (a derrota não pontua).
   Dá para mudar o "vai até" na criação do play.
-- **Bônus "em chamas" 🔥** — quem vence o play (a sexta) em sequência ganha ponto
-  extra no mês: 2 seguidos `+2`, 3 `+3`, 4 `+5`, 5 a 9 `+7` e, no topo da escada,
-  **10 ou mais** vira 👑💎 **Rainha do Play** com `+10` por play. O app mostra o
-  selo ao lado do nome, um card "Em chamas" no ranking e avisa ao fechar o dia.
+- **Status de sequência 🔥** — terminar sextas seguidas no **pódio do dia** dá
+  status, de 🔥 *Em chamas* (2 sextas) até 👑💎🌟 **Duquesa da V3** (8 ou mais).
+  No fechamento do mês a jogadora escolhe **usar** o status (vira pontos e zera)
+  ou **preservar** (segue crescendo e ganha 1 vida).
 - **Ranking do dia e do mês** — pódio com as fotos do top 3 e classificação
   (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento). A tela
   mostra o top 10 e expande para a lista inteira quando você quiser.
@@ -125,43 +125,46 @@ O app foi feito para ser usado com uma mão, na beira da quadra:
 5. **Finalizar o dia e somar os pontos** — aparece o ranking do dia para
    compartilhar, e o botão para já deixar o próximo play montado.
 
-## Regra do bônus em chamas
+## Status de sequência ("em chamas")
 
-Vencer o **ranking do dia** (1º lugar do play) em sequência acumula fogo:
+Terminar a sexta no **pódio do dia** (top 3) mantém o status vivo e faz a
+sequência crescer:
 
-| Sextas seguidas vencidas | Selo | Bônus acumulado por sexta |
+| Sextas seguidas no pódio | Status | Vale |
 | --- | --- | --- |
-| 2 | 🔥 Em chamas | +2 pontos |
-| 3 | 🔥🔥 Pegando fogo | +3 pontos |
-| 4 | 🔥🔥🔥 Imparável | +5 pontos |
-| 5 a 9 | 👑🔥 Lenda do play | +7 pontos |
-| 10 a 19 | 👑💎 Rainha do Play | +10 pontos |
-| **20 ou mais** | **👑🌟 Duquesa da V3** | **+15 pontos** |
+| 2 | 🔥 Em chamas | 3 pontos |
+| 3 | 🔥🔥 Pegando fogo | 6 pontos |
+| 4 | 🔥🔥🔥 Imparável | 10 pontos |
+| 5 | 👑🔥 Lenda do Play | 16 pontos |
+| 6 | 👑💎 Rainha do Play | 24 pontos |
+| 7 | 👑🌟 Imperatriz do Play | 34 pontos |
+| **8 ou mais** | **👑💎🌟 Duquesa da V3** | **50 pontos** |
 
-### A aposta do fechamento
+### Por que pódio e não vitória do dia
 
-O bônus não entra no ranking na hora: ele fica **acumulado** enquanto a sequência
-está viva. No **fechamento do mês**, quem terminou em chamas escolhe:
+Porque as duplas são equilibradas de propósito: medindo 400 sextas simuladas,
+**a mesma jogadora vence duas sextas seguidas em apenas 11% das vezes** e
+praticamente ninguém chega a 4. Com a vitória do dia como critério, os degraus
+de 4 para cima seriam enfeite. Pelo pódio, a escada inteira passa a ser
+alcançável e a Duquesa continua lendária (cerca de 1,5% das sequências).
 
-- **Sacar** — o acumulado entra na pontuação daquele mês e a sequência zera.
-- **Continuar apostando** — nada entra agora, mas a sequência segue e o bônus
-  cresce; ela decide de novo no fechamento do mês seguinte.
+### A decisão do fechamento
 
-**Perder uma sexta ou faltar zera a sequência e o acumulado junto** — é o risco
-que dá sentido à aposta. Como um mês tem 4 ou 5 sextas, os degraus de Rainha
-(10) e Duquesa (20) só são alcançados por quem atravessa meses apostando.
+Os pontos do ranking **zeram todo mês**; o status, não. No fechamento, quem
+terminou o mês com status escolhe:
 
-Se ninguém responder, o app assume **sacar** (a opção segura, em que nada se
-perde). A escolha fica guardada e pode ser trocada a qualquer momento.
+- **Usar** — os pontos do status entram naquele mês e a sequência **zera**.
+  É irreversível, então o app pede confirmação.
+- **Preservar** (padrão) — não pontua, o status segue crescendo no mês seguinte
+  e ela ganha **1 vida**.
 
-O bônus é creditado no play que estende a sequência, então ele entra no mês
-daquele play. **Perder o dia ou faltar ao play zera a sequência** — para manter o
-fogo aceso é preciso estar lá e vencer. Quem falta também não pontua naquela
-semana: os pontos já conquistados ficam, mas nada é somado.
+A **vida** absorve uma sexta fora do pódio: o status sobrevive, mas não cresce
+naquela semana. Não acumula (no máximo uma por vez). **Faltar zera o status
+mesmo com vida** — tem que estar lá.
 
-Se duas jogadoras **empatam de verdade** no topo do dia (mesmos pontos, saldo de
-games e vitórias), as duas são campeãs do dia: ambas mantêm a sequência e
-recebem o bônus. Desempatar por ordem alfabética seria sorte, não mérito.
+O ponto de equilíbrio: como a distância entre 1ª e 2ª colocada num mês é de
+apenas ~3,6 pontos, usar um status de 10 pontos praticamente decide o mês. Vale
+a pena preservar justamente quando ela já está fora da briga daquele mês.
 
 ## Como as duplas são montadas
 

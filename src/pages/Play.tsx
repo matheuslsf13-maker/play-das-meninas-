@@ -465,9 +465,10 @@ function PlayDetail({
             <>
               {award && awardLevel && (
                 <div className="banner warn" style={{ background: '#ffe9d6', color: '#8a4b06' }}>
-                  {awardLevel.emoji} <strong>{nameOf(award.player_id)}</strong> está {awardLevel.title.toLowerCase()}!
-                  {' '}{award.streak} sextas seguidas vencendo — <strong>{award.pending} pontos</strong> de bônus acumulado,
-                  que ela decide se saca no fechamento do mês.
+                  {awardLevel.emoji} <strong>{nameOf(award.player_id)}</strong> é {awardLevel.title.toLowerCase()}!
+                  {' '}{award.streak} sextas seguidas no pódio do dia — status vale{' '}
+                  <strong>{award.value} pontos</strong>, que ela decide se usa no fechamento do mês.
+                  {award.usouVida && ' (uma vida foi consumida para segurar o status hoje)'}
                 </div>
               )}
               <RankTable rows={dayRows} />

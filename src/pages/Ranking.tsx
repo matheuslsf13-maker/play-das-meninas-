@@ -28,8 +28,8 @@ import {
   isMaxLevel,
   newChoice,
   onFire,
+  PODIO,
   STREAK_LADDER,
-  streakBonus,
   streakLevel,
 } from '../lib/streaks'
 import { useStore } from '../lib/store'
@@ -182,21 +182,20 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
                       {nameOf(f.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {lvl?.title} · {f.streak} sextas seguidas · <strong>{f.pending} pts acumulados</strong>
-                      {' '}(+{streakBonusOf(f.streak)} se ganhar de novo)
+                      {lvl?.title} · {f.streak} sextas seguidas no pódio
+                      {f.life > 0 && ' · 💚 tem 1 vida'}
                     </div>
                   </div>
-                  <span className="badge open nowrap" title="bônus acumulado, ainda não sacado">
-                    🔥 {f.pending}
+                  <span className="badge open nowrap" title="quanto vale o status se ela usar no fechamento">
+                    {f.value} pts
                   </span>
                 </div>
               )
             })}
           </div>
           <p className="tiny muted" style={{ marginBottom: 0 }}>
-            O bônus fica <strong>acumulado</strong> enquanto a sequência está viva. Ele só entra no
-            ranking quando a jogadora <strong>saca</strong>, no fechamento do mês. Perder uma sexta
-            ou faltar zera a sequência <em>e</em> o acumulado.
+            O status se mantém enquanto ela terminar a sexta no <strong>pódio do dia</strong> (top {PODIO}).
+            Ele só vira pontos no fechamento do mês, se ela escolher usar.
           </p>
         </div>
       )}
@@ -205,14 +204,15 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
         <div className="card">
           <div className="section-title">🏁 Fechamento de {monthLabel(activeMonth)}</div>
           <p className="tiny muted" style={{ marginTop: 0 }}>
-            Estas jogadoras terminaram o mês em chamas. Pergunte a cada uma: <strong>sacar</strong> o
-            bônus agora (entra na pontuação deste mês e a sequência zera) ou <strong>continuar
-            apostando</strong> (o bônus não conta agora, mas cresce — e se ela perder uma sexta,
-            perde tudo)?
+            Estas jogadoras fecharam o mês com status. Pergunte a cada uma: <strong>usar</strong> o
+            status agora (os pontos entram neste mês e a sequência zera) ou <strong>preservar</strong>
+            {' '}(não pontua, o status continua crescendo no mês que vem e ela ganha <strong>1 vida</strong>)?
+            Sem resposta, o status fica preservado.
           </p>
           <div className="stack">
             {decisoes.map((d) => {
               const lvl = streakLevel(d.streak)
+              const usou = d.action === 'usar'
               return (
                 <div key={d.player_id} className="row bet-row">
                   <Avatar player={playerById(d.player_id)} size={40} />
@@ -221,28 +221,41 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
                       {nameOf(d.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {d.streak} sextas seguidas · <strong>{d.bonus} pts</strong> em jogo
+                      {lvl?.title} · {d.streak} sextas · vale <strong>{d.value} pts</strong>
                       {!d.respondido && ' · ainda não respondeu'}
                     </div>
                     {canEdit && (
                       <div className="row" style={{ gap: 6, marginTop: 6 }}>
                         <button
-                          className={`btn sm ${d.action === 'sacar' ? 'teal' : 'ghost'}`}
-                          onClick={() => saveChoice(newChoice(d.player_id, d.month, 'sacar', d.streak, d.bonus))}
+                          className={`btn sm ${usou ? 'teal' : 'ghost'}`}
+                          onClick={() => {
+                            const lbl = lvl?.title ?? 'status'
+                            if (usou) return
+                            if (
+                              !confirm(
+                                `Usar o status de ${nameOf(d.player_id)}?\n\n` +
+                                  `Ela ganha ${d.value} pontos em ${monthLabel(d.month)}, ` +
+                                  `mas o ${lbl} (${d.streak} sextas) zera e ela recomeça do zero.\n\n` +
+                                  `Essa escolha não tem volta.`,
+                              )
+                            )
+                              return
+                            saveChoice(newChoice(d.player_id, d.month, 'usar', d.streak, d.value))
+                          }}
                         >
-                          💰 Sacar +{d.bonus}
+                          💰 Usar +{d.value}
                         </button>
                         <button
-                          className={`btn sm ${d.action === 'continuar' ? 'pink' : 'ghost'}`}
-                          onClick={() => saveChoice(newChoice(d.player_id, d.month, 'continuar', d.streak, d.bonus))}
+                          className={`btn sm ${!usou ? 'pink' : 'ghost'}`}
+                          onClick={() => saveChoice(newChoice(d.player_id, d.month, 'preservar', d.streak, d.value))}
                         >
-                          🔥 Continuar apostando
+                          🔥 Preservar {!usou && '✓'}
                         </button>
                       </div>
                     )}
                     {!canEdit && (
-                      <div className="tiny" style={{ color: d.action === 'sacar' ? 'var(--teal)' : 'var(--pink)', fontWeight: 700 }}>
-                        {d.action === 'sacar' ? `sacou +${d.bonus}` : 'continuou apostando'}
+                      <div className="tiny" style={{ color: usou ? 'var(--teal)' : 'var(--pink)', fontWeight: 700 }}>
+                        {usou ? `usou o status (+${d.value})` : 'preservou o status'}
                       </div>
                     )}
                   </div>
@@ -307,7 +320,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
         <hr className="sep" style={{ borderColor: 'rgba(255,255,255,.15)' }} />
         <div className="section-title" style={{ marginBottom: 6 }}>🔥 Bônus em chamas</div>
         <p className="small" style={{ color: '#c9c6e0', marginTop: 0, marginBottom: 8 }}>
-          Venceu o play várias sextas seguidas? O bônus vai <strong>acumulando</strong>:
+          Terminou várias sextas seguidas no <strong>pódio do dia</strong> (top {PODIO})? Você ganha um status:
         </p>
         <div className="grid2" style={{ gap: 8 }}>
           {STREAK_LADDER.map((x) => {
@@ -327,24 +340,21 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
                 <div className="tiny" style={{ fontWeight: 800, letterSpacing: '.5px' }}>
                   {x.emoji} {faixa.toUpperCase()} · {x.title.toUpperCase()}
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 900 }}>+{x.bonus} <span style={{ fontSize: 11 }}>PONTOS</span></div>
+                <div style={{ fontSize: 20, fontWeight: 900 }}>{x.value} <span style={{ fontSize: 11 }}>PONTOS</span></div>
               </div>
             )
           })}
         </div>
         <p className="tiny" style={{ color: '#9d99bb', marginBottom: 0 }}>
-          <strong>No fechamento do mês ela escolhe:</strong> sacar o acumulado (entra na pontuação
-          do mês e a sequência zera) ou continuar apostando para valer mais. Perder uma sexta ou
-          faltar zera a sequência <em>e</em> o que estava acumulado — é o risco da aposta.
-          Por isso Rainha e Duquesa só aparecem para quem atravessa vários meses apostando.
+          <strong>No fechamento do mês ela escolhe:</strong> <em>usar</em> o status (os pontos entram
+          naquele mês e a sequência zera) ou <em>preservar</em> (não pontua, o status continua
+          crescendo e ela ganha <strong>1 vida</strong>, que segura uma sexta fora do pódio).
+          Faltar zera o status mesmo com vida — tem que estar lá. Como o mês tem 4 ou 5 sextas,
+          Imperatriz e Duquesa só existem para quem preserva e atravessa meses.
         </p>
       </div>
     </>
   )
-}
-
-function streakBonusOf(streak: number): number {
-  return streakBonus(streak + 1)
 }
 
 export function RankTable({ rows, fire }: { rows: PlayerStat[]; fire?: Map<string, number> }) {

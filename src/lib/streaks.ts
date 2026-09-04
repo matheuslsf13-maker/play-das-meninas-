@@ -3,32 +3,37 @@ import type { AppData, StreakChoice } from './types'
 import { monthOf, todayISO } from './types'
 
 /**
- * Bonus "em chamas": vencer o ranking do dia em sextas seguidas rende pontos
- * extras. O bonus fica ACUMULADO enquanto a sequencia esta viva e so entra no
- * ranking quando a jogadora saca, no fechamento do mes. Quebrar a sequencia
- * antes disso perde o acumulado -- e o risco da aposta.
+ * STATUS DE SEQUENCIA ("em chamas")
+ *
+ * Como as duplas sao equilibradas, a campea do dia e quase sorteio: medindo em
+ * 400 sextas simuladas, emendar duas vitorias acontece em 11% das vezes e
+ * ninguem chega perto de 4. Por isso o que mantem o status nao e vencer o dia,
+ * e sim terminar no PODIO do dia (top 3) -- e quem preserva o status no
+ * fechamento do mes ganha 1 VIDA, que absorve uma sexta fora do podio.
+ *
+ * O status vale pontos uma unica vez: no fechamento do mes, se ela ainda o
+ * tiver, escolhe USAR (os pontos entram naquele mes e o status zera) ou
+ * PRESERVAR (nao pontua, o status segue e cresce, e ela ganha a vida).
  */
-export function streakBonus(streak: number): number {
-  if (streak <= 1) return 0
-  if (streak === 2) return 2
-  if (streak === 3) return 3
-  if (streak === 4) return 5
-  if (streak < 10) return 7
-  if (streak < 20) return 10
-  return 15
-}
 
 export type StreakLevel = { emoji: string; title: string }
 
-/** A escada de status, do primeiro fogo ate o topo. */
 export const STREAK_LADDER = [
-  { from: 2, to: 2, emoji: '🔥', title: 'Em chamas', bonus: 2 },
-  { from: 3, to: 3, emoji: '🔥🔥', title: 'Pegando fogo', bonus: 3 },
-  { from: 4, to: 4, emoji: '🔥🔥🔥', title: 'Imparável', bonus: 5 },
-  { from: 5, to: 9, emoji: '👑🔥', title: 'Lenda do play', bonus: 7 },
-  { from: 10, to: 19, emoji: '👑💎', title: 'Rainha do Play', bonus: 10 },
-  { from: 20, to: null, emoji: '👑🌟', title: 'Duquesa da V3', bonus: 15 },
+  { from: 2, to: 2, emoji: '🔥', title: 'Em chamas', value: 3 },
+  { from: 3, to: 3, emoji: '🔥🔥', title: 'Pegando fogo', value: 6 },
+  { from: 4, to: 4, emoji: '🔥🔥🔥', title: 'Imparável', value: 10 },
+  { from: 5, to: 5, emoji: '👑🔥', title: 'Lenda do Play', value: 16 },
+  { from: 6, to: 6, emoji: '👑💎', title: 'Rainha do Play', value: 24 },
+  { from: 7, to: 7, emoji: '👑🌟', title: 'Imperatriz do Play', value: 34 },
+  { from: 8, to: null, emoji: '👑💎🌟', title: 'Duquesa da V3', value: 50 },
 ] as const
+
+/** Quantos pontos vale o status que ela tem agora. */
+export function streakValue(streak: number): number {
+  if (streak <= 1) return 0
+  const faixa = [...STREAK_LADDER].reverse().find((x) => streak >= x.from)
+  return faixa ? faixa.value : 0
+}
 
 export function streakLevel(streak: number): StreakLevel | null {
   if (streak <= 1) return null
@@ -36,14 +41,17 @@ export function streakLevel(streak: number): StreakLevel | null {
   return faixa ? { emoji: faixa.emoji, title: faixa.title } : null
 }
 
-/** O status maximo: 20 sextas seguidas vencendo. */
-export const MAX_STREAK = 20
+/** Quantas jogadoras sobem ao podio do dia. */
+export const PODIO = 3
+
+/** O status maximo: 8 sextas seguidas no podio. */
+export const MAX_STREAK = 8
 
 export function isMaxLevel(streak: number): boolean {
   return streak >= MAX_STREAK
 }
 
-/** Bonus efetivamente creditado num mes (a jogadora sacou). */
+/** Pontos creditados num mes porque a jogadora decidiu usar o status. */
 export type StreakAward = {
   month: string
   player_id: string
@@ -51,37 +59,46 @@ export type StreakAward = {
   bonus: number
 }
 
-/** O que aconteceu com a sequencia de alguem num play. */
+/** O que aconteceu com a sequencia de alguem numa sexta. */
 export type StreakStep = {
   session_id: string
   date: string
   player_id: string
   streak: number
-  bonus: number // ganho neste play
-  pending: number // acumulado depois deste play
+  /** true quando a vida foi gasta para segurar o status nesta sexta. */
+  usouVida: boolean
+  value: number
 }
 
-/** Decisao de fechamento de mes: ja tomada ou ainda pendente. */
+/** Decisao de fechamento de mes: preservar (padrao) ou usar. */
 export type MonthDecision = {
   month: string
   player_id: string
   streak: number
-  bonus: number
-  action: 'sacar' | 'continuar'
+  /** Quanto vale usar o status agora. */
+  value: number
+  action: 'usar' | 'preservar'
   respondido: boolean
 }
 
 export type Streaks = {
   awards: StreakAward[]
   steps: StreakStep[]
-  /** Sequencia viva de cada jogadora. */
   current: Map<string, number>
-  /** Bonus acumulado ainda nao sacado. */
-  pending: Map<string, number>
+  /** Vidas disponiveis de cada jogadora (0 ou 1). */
+  lives: Map<string, number>
   best: Map<string, number>
   winnersOf: Map<string, string[]>
+  /** Quem subiu ao podio de cada play. */
+  podiumOf: Map<string, string[]>
   decisions: MonthDecision[]
   closedMonths: string[]
+}
+
+/** A escolha guardada no banco usa os nomes antigos; aqui viram usar/preservar. */
+function acaoDe(c: StreakChoice | undefined): 'usar' | 'preservar' | null {
+  if (!c) return null
+  return c.action === 'sacar' ? 'usar' : 'preservar'
 }
 
 export function computeStreaks(data: AppData): Streaks {
@@ -91,36 +108,39 @@ export function computeStreaks(data: AppData): Streaks {
     .sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at))
 
   const current = new Map<string, number>()
-  const pending = new Map<string, number>()
+  const lives = new Map<string, number>()
   const best = new Map<string, number>()
   const awards: StreakAward[] = []
   const steps: StreakStep[] = []
   const decisions: MonthDecision[] = []
   const closedMonths: string[] = []
   const winnersOf = new Map<string, string[]>()
+  const podiumOf = new Map<string, string[]>()
   const nameOf = (id: string) => data.players.find((p) => p.id === id)?.name ?? id
 
-  /** No fim do mes, quem esta em chamas saca ou continua apostando. */
   const fecharMes = (mes: string) => {
     closedMonths.push(mes)
     for (const p of data.players) {
       const seq = current.get(p.id) ?? 0
-      if (seq < 2) continue // sem fogo, nao ha o que decidir
-      const acumulado = pending.get(p.id) ?? 0
+      if (seq < 2) continue // sem status, nao ha o que decidir
       const escolha = escolhas.get(`${p.id}:${mes}`)
-      const action = escolha?.action ?? 'sacar' // sem resposta, o seguro: saca
+      // preservar e o padrao: usar o status e irreversivel, entao so acontece
+      // quando alguem escolhe de proposito
+      const action = acaoDe(escolha) ?? 'preservar'
       decisions.push({
         month: mes,
         player_id: p.id,
         streak: seq,
-        bonus: acumulado,
+        value: streakValue(seq),
         action,
         respondido: Boolean(escolha),
       })
-      if (action === 'sacar') {
-        if (acumulado > 0) awards.push({ month: mes, player_id: p.id, streak: seq, bonus: acumulado })
+      if (action === 'usar') {
+        awards.push({ month: mes, player_id: p.id, streak: seq, bonus: streakValue(seq) })
         current.set(p.id, 0)
-        pending.set(p.id, 0)
+        lives.set(p.id, 0)
+      } else {
+        lives.set(p.id, 1) // preservou: ganha uma vida (nao acumula)
       }
     }
   }
@@ -135,42 +155,61 @@ export function computeStreaks(data: AppData): Streaks {
     const ms = playedMatches(data, { sessionId: s.id })
     if (ms.length === 0) continue
     const rank = rankPlayers(computeStats(ms), nameOf)
-    const top = rank[0]
-    if (!top) continue
+    if (rank.length === 0) continue
 
-    // empate real no topo (mesmos pontos, saldo e vitorias) da o dia as duas:
-    // desempatar por ordem alfabetica seria sorte, nao merito
+    // campeas do dia (para os titulos e a arte do mes)
+    const top = rank[0]
     const champions = rank.filter(
       (x) => x.points === top.points && balance(x) === balance(top) && x.wins === top.wins,
     )
-    const isChampion = new Set(champions.map((c) => c.player_id))
-    winnersOf.set(s.id, [...isChampion])
+    winnersOf.set(s.id, champions.map((c) => c.player_id))
+
+    // podio do dia: o top 3, incluindo quem empata com a terceira
+    const corte = rank[Math.min(PODIO, rank.length) - 1]
+    const podio = rank.filter(
+      (x) =>
+        x.points > corte.points ||
+        (x.points === corte.points && balance(x) >= balance(corte)),
+    )
+    const noPodio = new Set(podio.map((x) => x.player_id))
+    podiumOf.set(s.id, [...noPodio])
+
+    const jogaram = new Set<string>()
+    for (const m of ms) for (const id of [...m.team_a, ...m.team_b]) jogaram.add(id)
 
     for (const p of data.players) {
-      if (isChampion.has(p.id)) {
-        const seq = (current.get(p.id) ?? 0) + 1
-        const ganho = streakBonus(seq)
-        const acumulado = (pending.get(p.id) ?? 0) + ganho
-        current.set(p.id, seq)
-        pending.set(p.id, acumulado)
-        if (seq > (best.get(p.id) ?? 0)) best.set(p.id, seq)
-        steps.push({ session_id: s.id, date: s.date, player_id: p.id, streak: seq, bonus: ganho, pending: acumulado })
+      const seq = current.get(p.id) ?? 0
+      if (noPodio.has(p.id)) {
+        const nova = seq + 1
+        current.set(p.id, nova)
+        if (nova > (best.get(p.id) ?? 0)) best.set(p.id, nova)
+        steps.push({
+          session_id: s.id, date: s.date, player_id: p.id,
+          streak: nova, usouVida: false, value: streakValue(nova),
+        })
+      } else if (seq >= 2 && jogaram.has(p.id) && (lives.get(p.id) ?? 0) > 0) {
+        // veio, ficou fora do podio, mas tinha vida: o status sobrevive
+        lives.set(p.id, 0)
+        steps.push({
+          session_id: s.id, date: s.date, player_id: p.id,
+          streak: seq, usouVida: true, value: streakValue(seq),
+        })
       } else {
-        // perdeu o dia ou faltou: zera a sequencia e o que estava apostado
+        // faltou, ou ficou fora do podio sem vida: perde tudo
         current.set(p.id, 0)
-        pending.set(p.id, 0)
+        lives.set(p.id, 0)
       }
     }
   }
 
-  // mes ja virado no calendario tambem fecha, mesmo sem play no mes seguinte:
-  // a premiacao acontece na ultima semana, nao da para esperar a proxima sexta
+  // o mes fecha quando o calendario vira, sem esperar a proxima sexta:
+  // a premiacao acontece na ultima semana do mes
   if (mesCorrente && mesCorrente < monthOf(todayISO())) fecharMes(mesCorrente)
 
-  return { awards, steps, current, pending, best, winnersOf, decisions, closedMonths }
+  return { awards, steps, current, lives, best, winnersOf, podiumOf, decisions, closedMonths }
 }
 
-/** Soma no ranking os bonus sacados no periodo. */
+/** Soma no ranking os status usados no periodo. */
 export function applyBonuses(
   stats: Map<string, PlayerStat>,
   awards: StreakAward[],
@@ -186,11 +225,18 @@ export function applyBonuses(
   return out
 }
 
-/** Jogadoras com sequencia viva, da maior para a menor. */
-export function onFire(streaks: Streaks): { player_id: string; streak: number; pending: number }[] {
+/** Jogadoras com status vivo, da maior sequencia para a menor. */
+export function onFire(
+  streaks: Streaks,
+): { player_id: string; streak: number; value: number; life: number }[] {
   return [...streaks.current.entries()]
     .filter(([, n]) => n >= 2)
-    .map(([player_id, streak]) => ({ player_id, streak, pending: streaks.pending.get(player_id) ?? 0 }))
+    .map(([player_id, streak]) => ({
+      player_id,
+      streak,
+      value: streakValue(streak),
+      life: streaks.lives.get(player_id) ?? 0,
+    }))
     .sort((a, b) => b.streak - a.streak)
 }
 
@@ -201,17 +247,17 @@ export function choiceId(playerId: string, month: string): string {
 export function newChoice(
   playerId: string,
   month: string,
-  action: 'sacar' | 'continuar',
+  action: 'usar' | 'preservar',
   streak: number,
-  bonus: number,
+  value: number,
 ): StreakChoice {
   return {
     id: choiceId(playerId, month),
     player_id: playerId,
     month,
-    action,
+    action: action === 'usar' ? 'sacar' : 'continuar', // nomes ja gravados no banco
     streak,
-    bonus,
+    bonus: value,
     created_at: new Date().toISOString(),
   }
 }
