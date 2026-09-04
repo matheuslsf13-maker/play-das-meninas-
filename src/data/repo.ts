@@ -1,4 +1,4 @@
-import type { AppData, Match, PlaySession, Player } from '../lib/types'
+import type { AppData, Match, PlaySession, Player, StreakChoice } from '../lib/types'
 
 export interface Repo {
   readonly kind: 'local' | 'supabase'
@@ -9,6 +9,7 @@ export interface Repo {
   deleteSession(id: string): Promise<void>
   saveMatches(ms: Match[]): Promise<void>
   deleteMatchesOfSession(sessionId: string): Promise<void>
+  saveChoice(choice: StreakChoice): Promise<void>
   uploadPhoto(playerId: string, file: File): Promise<string>
   /** Apaga o arquivo da foto. Silencioso se a url nao for do nosso storage. */
   deletePhoto(url: string): Promise<void>

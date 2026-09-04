@@ -4,7 +4,7 @@ import { loadCache, loadQueue, saveCache, saveQueue, type WriteOp } from '../dat
 import type { Repo } from '../data/repo'
 import { supabaseRepo } from '../data/supabaseRepo'
 import { hasSupabase, supabase } from './supabase'
-import type { AppData, Match, PlaySession, Player } from './types'
+import type { AppData, Match, PlaySession, Player, StreakChoice } from './types'
 import { emptyData, uid } from './types'
 
 export type SyncState = 'saved' | 'saving' | 'pending'
@@ -26,6 +26,7 @@ type Ctx = {
   deleteSession: (id: string) => void
   saveMatches: (ms: Match[]) => void
   replaceSessionMatches: (sessionId: string, ms: Match[]) => void
+  saveChoice: (choice: StreakChoice) => void
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   playerById: (id: string) => Player | undefined
@@ -59,6 +60,8 @@ function applyLocally(d: AppData, op: WriteOp): AppData {
         ...d,
         matches: [...d.matches.filter((m) => m.session_id !== op.sessionId), ...op.matches],
       }
+    case 'saveChoice':
+      return { ...d, choices: upsert(d.choices, op.choice) }
   }
 }
 
@@ -210,6 +213,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       saveMatches: (matches) => push({ id: uid(), type: 'saveMatches', matches }),
       replaceSessionMatches: (sessionId, matches) =>
         push({ id: uid(), type: 'replaceSessionMatches', sessionId, matches }),
+      saveChoice: (choice) => push({ id: uid(), type: 'saveChoice', choice }),
       signIn: async (email, password) => {
         if (!supabase) return
         const { error: e } = await supabase.auth.signInWithPassword({ email, password })
@@ -242,6 +246,8 @@ async function runOp(repo: Repo, op: WriteOp): Promise<void> {
     case 'replaceSessionMatches':
       await repo.deleteMatchesOfSession(op.sessionId)
       return repo.saveMatches(op.matches)
+    case 'saveChoice':
+      return repo.saveChoice(op.choice)
   }
 }
 

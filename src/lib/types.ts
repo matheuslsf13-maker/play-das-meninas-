@@ -32,13 +32,29 @@ export type Match = {
   score_b: number | null
 }
 
+/**
+ * Escolha da jogadora no fechamento do mes, quando ela esta em chamas:
+ * sacar o bonus acumulado agora (e zerar a sequencia) ou continuar apostando
+ * para valer mais la na frente.
+ */
+export type StreakChoice = {
+  id: string // `${player_id}:${month}`
+  player_id: string
+  month: string // YYYY-MM do mes que fechou
+  action: 'sacar' | 'continuar'
+  streak: number // sequencia no momento da decisao
+  bonus: number // bonus acumulado em jogo
+  created_at: string
+}
+
 export type AppData = {
   players: Player[]
   sessions: PlaySession[]
   matches: Match[]
+  choices: StreakChoice[]
 }
 
-export const emptyData = (): AppData => ({ players: [], sessions: [], matches: [] })
+export const emptyData = (): AppData => ({ players: [], sessions: [], matches: [], choices: [] })
 
 export function uid(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID()

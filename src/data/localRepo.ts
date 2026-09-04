@@ -1,4 +1,4 @@
-import type { AppData, Match, PlaySession, Player } from '../lib/types'
+import type { AppData, Match, PlaySession, Player, StreakChoice } from '../lib/types'
 import { emptyData } from '../lib/types'
 import type { Repo } from './repo'
 
@@ -13,6 +13,7 @@ function read(): AppData {
       players: parsed.players ?? [],
       sessions: parsed.sessions ?? [],
       matches: parsed.matches ?? [],
+      choices: parsed.choices ?? [],
     }
   } catch {
     return emptyData()
@@ -64,6 +65,13 @@ export const localRepo: Repo = {
       if (i >= 0) d.matches[i] = m
       else d.matches.push(m)
     }
+    write(d)
+  },
+  async saveChoice(choice: StreakChoice) {
+    const d = read()
+    const i = d.choices.findIndex((x) => x.id === choice.id)
+    if (i >= 0) d.choices[i] = choice
+    else d.choices.push(choice)
     write(d)
   },
   async deleteMatchesOfSession(sessionId: string) {

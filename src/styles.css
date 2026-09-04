@@ -534,3 +534,12 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 }
 .toggle-card input[type='checkbox'] { width: 20px; height: 20px; accent-color: var(--pink); flex: none; }
 .input:disabled { background: #f1ece6; color: var(--muted); }
+
+/* linha de decisão do fechamento do mês */
+.bet-row {
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px;
+  background: #fbf8f4;
+}

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { AppData, Match, PlaySession, Player } from '../lib/types'
+import type { AppData, Match, PlaySession, Player, StreakChoice } from '../lib/types'
 import type { Repo } from './repo'
 
 function client() {
@@ -11,17 +11,22 @@ export const supabaseRepo: Repo = {
   kind: 'supabase',
   async load(): Promise<AppData> {
     const sb = client()
-    const [players, sessions, matches] = await Promise.all([
+    const [players, sessions, matches, choices] = await Promise.all([
       sb.from('players').select('*').order('name'),
       sb.from('sessions').select('*').order('date', { ascending: false }),
       sb.from('matches').select('*'),
+      sb.from('streak_choices').select('*'),
     ])
     const err = players.error || sessions.error || matches.error
     if (err) throw err
+    // a tabela de escolhas e mais nova: se ainda nao foi criada, o app segue
+    // funcionando sem ela em vez de nao abrir
+    if (choices.error) console.warn('streak_choices indisponível:', choices.error.message)
     return {
       players: (players.data ?? []) as Player[],
       sessions: (sessions.data ?? []) as PlaySession[],
       matches: (matches.data ?? []) as Match[],
+      choices: (choices.data ?? []) as StreakChoice[],
     }
   },
   async savePlayer(p: Player) {
@@ -61,6 +66,10 @@ export const supabaseRepo: Repo = {
     const { data } = sb.storage.from('photos').getPublicUrl(path)
     return data.publicUrl
   },
+  async saveChoice(choice: StreakChoice) {
+    const { error } = await client().from('streak_choices').upsert(choice)
+    if (error) throw error
+  },
   async deletePhoto(url: string) {
     const marca = '/storage/v1/object/public/photos/'
     const i = url.indexOf(marca)
@@ -76,6 +85,7 @@ export const supabaseRepo: Repo = {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, cb)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, cb)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, cb)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'streak_choices' }, cb)
       .subscribe()
     return () => {
       void sb.removeChannel(ch)

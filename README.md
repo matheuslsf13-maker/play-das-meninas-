@@ -129,16 +129,30 @@ O app foi feito para ser usado com uma mão, na beira da quadra:
 
 Vencer o **ranking do dia** (1º lugar do play) em sequência acumula fogo:
 
-| Plays seguidos vencidos | Selo | Bônus no ranking do mês |
+| Sextas seguidas vencidas | Selo | Bônus acumulado por sexta |
 | --- | --- | --- |
 | 2 | 🔥 Em chamas | +2 pontos |
 | 3 | 🔥🔥 Pegando fogo | +3 pontos |
 | 4 | 🔥🔥🔥 Imparável | +5 pontos |
-| 5 a 9 | 👑🔥 Lenda do play | +7 pontos por play |
-| **10 ou mais** | **👑💎 Rainha do Play** | **+10 pontos por play** |
+| 5 a 9 | 👑🔥 Lenda do play | +7 pontos |
+| 10 a 19 | 👑💎 Rainha do Play | +10 pontos |
+| **20 ou mais** | **👑🌟 Duquesa da V3** | **+15 pontos** |
 
-Como o play acontece toda sexta, cada degrau da escada é uma semana vencendo —
-a **Rainha do Play** é quem vence 10 sextas seguidas.
+### A aposta do fechamento
+
+O bônus não entra no ranking na hora: ele fica **acumulado** enquanto a sequência
+está viva. No **fechamento do mês**, quem terminou em chamas escolhe:
+
+- **Sacar** — o acumulado entra na pontuação daquele mês e a sequência zera.
+- **Continuar apostando** — nada entra agora, mas a sequência segue e o bônus
+  cresce; ela decide de novo no fechamento do mês seguinte.
+
+**Perder uma sexta ou faltar zera a sequência e o acumulado junto** — é o risco
+que dá sentido à aposta. Como um mês tem 4 ou 5 sextas, os degraus de Rainha
+(10) e Duquesa (20) só são alcançados por quem atravessa meses apostando.
+
+Se ninguém responder, o app assume **sacar** (a opção segura, em que nada se
+perde). A escolha fica guardada e pode ser trocada a qualquer momento.
 
 O bônus é creditado no play que estende a sequência, então ele entra no mês
 daquele play. **Perder o dia ou faltar ao play zera a sequência** — para manter o

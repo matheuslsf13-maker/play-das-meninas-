@@ -34,7 +34,7 @@ export default function Stats() {
 
   const streaks = useMemo(() => computeStreaks(data), [data])
   const stats = useMemo(() => {
-    const awards = period === 'all' ? streaks.awards : streaks.awards.filter((a) => monthOf(a.date) === period)
+    const awards = period === 'all' ? streaks.awards : streaks.awards.filter((a) => a.month === period)
     return applyBonuses(computeStats(matches), awards)
   }, [matches, streaks, period])
   const ranked = useMemo(() => rankPlayers(stats, nameOf), [stats, nameOf])

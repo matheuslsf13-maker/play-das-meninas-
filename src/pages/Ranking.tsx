@@ -22,12 +22,21 @@ function positionsOf(rows: PlayerStat[]): number[] {
   })
   return pos
 }
-import { applyBonuses, computeStreaks, isMaxLevel, onFire, STREAK_LADDER, streakBonus, streakLevel } from '../lib/streaks'
+import {
+  applyBonuses,
+  computeStreaks,
+  isMaxLevel,
+  newChoice,
+  onFire,
+  STREAK_LADDER,
+  streakBonus,
+  streakLevel,
+} from '../lib/streaks'
 import { useStore } from '../lib/store'
 import { monthLabel, monthOf, todayISO } from '../lib/types'
 
 export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
-  const { data, nameOf, playerById } = useStore()
+  const { data, nameOf, playerById, canEdit, saveChoice } = useStore()
 
   const months = useMemo(() => {
     const set = new Set(data.sessions.map((s) => monthOf(s.date)))
@@ -45,11 +54,15 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
 
   const rows = useMemo(() => {
     const ms = playedMatches(data, { month: activeMonth })
-    const awards = streaks.awards.filter((a) => monthOf(a.date) === activeMonth)
+    const awards = streaks.awards.filter((a) => a.month === activeMonth)
     return rankPlayers(applyBonuses(computeStats(ms), awards), nameOf)
   }, [data, activeMonth, nameOf, streaks])
 
   const fire = useMemo(() => onFire(streaks), [streaks])
+  const decisoes = useMemo(
+    () => streaks.decisions.filter((d) => d.month === activeMonth),
+    [streaks, activeMonth],
+  )
 
   const totals = useMemo(() => {
     const ms = playedMatches(data, { month: activeMonth })
@@ -169,21 +182,74 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
                       {nameOf(f.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {lvl?.title} · venceu os {f.streak} últimos plays · +{streakBonusOf(f.streak)} se ganhar de novo
+                      {lvl?.title} · {f.streak} sextas seguidas · <strong>{f.pending} pts acumulados</strong>
+                      {' '}(+{streakBonusOf(f.streak)} se ganhar de novo)
                     </div>
                   </div>
-                  <span className="badge open nowrap" title={`+${streakBonusOf(f.streak)} pontos se vencer o próximo play`}>
-                    +{streakBonusOf(f.streak)}
+                  <span className="badge open nowrap" title="bônus acumulado, ainda não sacado">
+                    🔥 {f.pending}
                   </span>
                 </div>
               )
             })}
           </div>
           <p className="tiny muted" style={{ marginBottom: 0 }}>
-            Bônus por vencer o play em sequência: 2 seguidos <strong>+2</strong>,
-            3 <strong>+3</strong>, 4 <strong>+5</strong>, 5 a 9 <strong>+7</strong> e
-            10 ou mais <strong>+10</strong> pontos. Perder o play ou faltar zera a sequência.
+            O bônus fica <strong>acumulado</strong> enquanto a sequência está viva. Ele só entra no
+            ranking quando a jogadora <strong>saca</strong>, no fechamento do mês. Perder uma sexta
+            ou faltar zera a sequência <em>e</em> o acumulado.
           </p>
+        </div>
+      )}
+
+      {decisoes.length > 0 && (
+        <div className="card">
+          <div className="section-title">🏁 Fechamento de {monthLabel(activeMonth)}</div>
+          <p className="tiny muted" style={{ marginTop: 0 }}>
+            Estas jogadoras terminaram o mês em chamas. Pergunte a cada uma: <strong>sacar</strong> o
+            bônus agora (entra na pontuação deste mês e a sequência zera) ou <strong>continuar
+            apostando</strong> (o bônus não conta agora, mas cresce — e se ela perder uma sexta,
+            perde tudo)?
+          </p>
+          <div className="stack">
+            {decisoes.map((d) => {
+              const lvl = streakLevel(d.streak)
+              return (
+                <div key={d.player_id} className="row bet-row">
+                  <Avatar player={playerById(d.player_id)} size={40} />
+                  <div className="grow">
+                    <div style={{ fontWeight: 800 }} className="ellipsis">
+                      {nameOf(d.player_id)} {lvl?.emoji}
+                    </div>
+                    <div className="tiny muted">
+                      {d.streak} sextas seguidas · <strong>{d.bonus} pts</strong> em jogo
+                      {!d.respondido && ' · ainda não respondeu'}
+                    </div>
+                    {canEdit && (
+                      <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                        <button
+                          className={`btn sm ${d.action === 'sacar' ? 'teal' : 'ghost'}`}
+                          onClick={() => saveChoice(newChoice(d.player_id, d.month, 'sacar', d.streak, d.bonus))}
+                        >
+                          💰 Sacar +{d.bonus}
+                        </button>
+                        <button
+                          className={`btn sm ${d.action === 'continuar' ? 'pink' : 'ghost'}`}
+                          onClick={() => saveChoice(newChoice(d.player_id, d.month, 'continuar', d.streak, d.bonus))}
+                        >
+                          🔥 Continuar apostando
+                        </button>
+                      </div>
+                    )}
+                    {!canEdit && (
+                      <div className="tiny" style={{ color: d.action === 'sacar' ? 'var(--teal)' : 'var(--pink)', fontWeight: 700 }}>
+                        {d.action === 'sacar' ? `sacou +${d.bonus}` : 'continuou apostando'}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -241,7 +307,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
         <hr className="sep" style={{ borderColor: 'rgba(255,255,255,.15)' }} />
         <div className="section-title" style={{ marginBottom: 6 }}>🔥 Bônus em chamas</div>
         <p className="small" style={{ color: '#c9c6e0', marginTop: 0, marginBottom: 8 }}>
-          Venceu o play várias sextas seguidas? Ganha ponto extra no mês:
+          Venceu o play várias sextas seguidas? O bônus vai <strong>acumulando</strong>:
         </p>
         <div className="grid2" style={{ gap: 8 }}>
           {STREAK_LADDER.map((x) => {
@@ -267,8 +333,10 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
           })}
         </div>
         <p className="tiny" style={{ color: '#9d99bb', marginBottom: 0 }}>
-          Perder o play ou faltar zera a sequência — tem que estar lá e vencer!
-          Como o play é toda sexta, cada degrau é uma semana vencendo.
+          <strong>No fechamento do mês ela escolhe:</strong> sacar o acumulado (entra na pontuação
+          do mês e a sequência zera) ou continuar apostando para valer mais. Perder uma sexta ou
+          faltar zera a sequência <em>e</em> o que estava acumulado — é o risco da aposta.
+          Por isso Rainha e Duquesa só aparecem para quem atravessa vários meses apostando.
         </p>
       </div>
     </>

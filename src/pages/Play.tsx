@@ -356,11 +356,12 @@ function PlayDetail({
   const doneCount = matches.filter(isPlayed).length
   const finished = session.status === 'finished'
 
-  // bonus "em chamas" creditado neste play (so existe depois de finalizado)
-  const award = useMemo(
-    () => computeStreaks(data).awards.find((a) => a.session_id === session.id),
+  // sequencias que avancaram neste play (so existe depois de finalizado)
+  const passos = useMemo(
+    () => computeStreaks(data).steps.filter((x) => x.session_id === session.id && x.streak >= 2),
     [data, session.id],
   )
+  const award = passos[0]
   const awardLevel = award ? streakLevel(award.streak) : null
 
   function setScore(m: Match, a: number | null, b: number | null) {
@@ -462,7 +463,8 @@ function PlayDetail({
               {award && awardLevel && (
                 <div className="banner warn" style={{ background: '#ffe9d6', color: '#8a4b06' }}>
                   {awardLevel.emoji} <strong>{nameOf(award.player_id)}</strong> está {awardLevel.title.toLowerCase()}!
-                  {' '}{award.streak} plays seguidos vencendo — <strong>+{award.bonus} pontos</strong> de bônus no ranking do mês.
+                  {' '}{award.streak} sextas seguidas vencendo — <strong>{award.pending} pontos</strong> de bônus acumulado,
+                  que ela decide se saca no fechamento do mês.
                 </div>
               )}
               <RankTable rows={dayRows} />

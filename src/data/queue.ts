@@ -1,4 +1,4 @@
-import type { Match, PlaySession, Player } from '../lib/types'
+import type { Match, PlaySession, Player, StreakChoice } from '../lib/types'
 
 /**
  * Operacoes de escrita em formato serializavel: assim a fila sobrevive a um
@@ -11,6 +11,7 @@ export type WriteOp =
   | { id: string; type: 'deleteSession'; sessionId: string }
   | { id: string; type: 'saveMatches'; matches: Match[] }
   | { id: string; type: 'replaceSessionMatches'; sessionId: string; matches: Match[] }
+  | { id: string; type: 'saveChoice'; choice: StreakChoice }
 
 const QUEUE_KEY = 'play-das-meninas:queue'
 const CACHE_KEY = 'play-das-meninas:cache'
