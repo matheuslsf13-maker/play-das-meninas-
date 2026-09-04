@@ -4,6 +4,7 @@ import { fullRotationRounds, generateSchedule, matchesPerPlayer, planToMatches, 
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
 import { buildHistory, computeStats, playedMatches, ratings, rankPlayers } from '../lib/stats'
+import { buildDayPoster } from '../lib/poster'
 import { computeStreaks, streakLevel } from '../lib/streaks'
 import { useWakeLock } from '../lib/wakelock'
 import { useStore } from '../lib/store'
@@ -331,8 +332,10 @@ function PlayDetail({
   onNext: (preset: Partial<PlaySession>) => void
   onToast: (m: string) => void
 }) {
-  const { data, nameOf, canEdit, saveMatches, saveSession, replaceSessionMatches } = useStore()
+  const { data, nameOf, playerById, canEdit, saveMatches, saveSession, replaceSessionMatches } = useStore()
   const [showRank, setShowRank] = useState(false)
+  const [arte, setArte] = useState<{ url: string; blob: Blob } | null>(null)
+  const [gerando, setGerando] = useState(false)
 
   const matches = useMemo(
     () =>
@@ -372,6 +375,58 @@ function PlayDetail({
   }
 
   useWakeLock(!finished)
+
+  async function gerarArteDoDia() {
+    setGerando(true)
+    try {
+      const passosDoDia = new Map(passos.map((x) => [x.player_id, x]))
+      const linhas = dayRows.slice(0, 8).map((s, i) => {
+        // o fogo so aparece para a campea do dia, se ela tem status
+        const st = i === 0 ? passosDoDia.get(s.player_id) : undefined
+        const lvl = st && st.streak >= 2 ? streakLevel(st.streak) : null
+        return {
+          name: nameOf(s.player_id),
+          points: s.points,
+          wins: s.wins,
+          losses: s.losses,
+          photo: playerById(s.player_id)?.photo_url ?? null,
+          streak: st?.streak ?? 0,
+          statusTitle: lvl?.title,
+          statusEmoji: lvl?.emoji,
+          statusPoints: undefined,
+        }
+      })
+      const blob = await buildDayPoster(dateLabel(session.date), linhas, `${import.meta.env.BASE_URL}logo.png`)
+      setArte({ url: URL.createObjectURL(blob), blob })
+    } catch (e) {
+      onToast('Não consegui gerar a imagem')
+      console.error(e)
+    } finally {
+      setGerando(false)
+    }
+  }
+
+  async function salvarArte() {
+    if (!arte) return
+    const arquivo = new File([arte.blob], `play-${session.date}.png`, { type: 'image/png' })
+    const nav = navigator as Navigator & {
+      canShare?: (d: { files: File[] }) => boolean
+      share?: (d: { files: File[]; text?: string }) => Promise<void>
+    }
+    if (nav.canShare?.({ files: [arquivo] }) && nav.share) {
+      try {
+        await nav.share({ files: [arquivo], text: `${session.title} — ${dateLabel(session.date)} 🏐` })
+        return
+      } catch {
+        /* cancelou: cai para o download */
+      }
+    }
+    const a = document.createElement('a')
+    a.href = arte.url
+    a.download = arquivo.name
+    a.click()
+    onToast('Imagem salva 📸')
+  }
 
   async function regenerate() {
     if (doneCount > 0 && !confirm('Já existem placares lançados. Gerar novas duplas apaga todos os resultados deste play. Continuar?')) return
@@ -457,6 +512,21 @@ function PlayDetail({
         </button>
       )}
 
+      {arte && (
+        <Modal
+          title={`Play de ${dateLabel(session.date)}`}
+          onClose={() => { URL.revokeObjectURL(arte.url); setArte(null) }}
+        >
+          <img src={arte.url} alt="Imagem do ranking do dia" style={{ width: '100%', borderRadius: 14 }} />
+          <button className="btn pink block" style={{ marginTop: 12 }} onClick={() => void salvarArte()}>
+            📲 Compartilhar / salvar imagem
+          </button>
+          <p className="tiny muted" style={{ marginBottom: 0 }}>
+            No celular também dá para segurar o dedo na imagem e escolher <em>salvar</em>.
+          </p>
+        </Modal>
+      )}
+
       {showRank && (
         <Modal title={`Ranking do dia — ${dateLabel(session.date)}`} onClose={() => setShowRank(false)}>
           {dayRows.length === 0 ? (
@@ -480,6 +550,14 @@ function PlayDetail({
                   onToast(ok ? 'Ranking do dia copiado 💬' : 'Não consegui copiar')
                 }}
               >💬 Compartilhar no WhatsApp</button>
+              <button
+                className="btn purple block"
+                style={{ marginTop: 8 }}
+                disabled={gerando}
+                onClick={() => void gerarArteDoDia()}
+              >
+                {gerando ? 'Montando a arte…' : '🏐 Gerar imagem do dia'}
+              </button>
             </>
           )}
         </Modal>
