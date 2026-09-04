@@ -18,6 +18,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function App() {
   const { loading, error, online, canEdit, userEmail, signIn, signOut, sync, pendingCount } = useStore()
   const [tab, setTab] = useState<Tab>('ranking')
+  const [abrirPlay, setAbrirPlay] = useState<string | null>(null)
   const primeiraRenderizacao = useRef(true)
 
   // trocar de aba comeca a leitura do topo; sem isso a pagina "pula" quando a
@@ -89,8 +90,15 @@ export default function App() {
         <div className="card"><div className="empty">Carregando…</div></div>
       ) : (
         <main>
-          {tab === 'ranking' && <Ranking onToast={show} />}
-          {tab === 'play' && <Play onToast={show} />}
+          {tab === 'ranking' && (
+            <Ranking
+              onToast={show}
+              onAbrirPlay={(id) => { setAbrirPlay(id); setTab('play') }}
+            />
+          )}
+          {tab === 'play' && (
+            <Play onToast={show} abrir={abrirPlay} onAbriu={() => setAbrirPlay(null)} />
+          )}
           {tab === 'stats' && <Stats />}
           {tab === 'players' && <Players onToast={show} />}
         </main>

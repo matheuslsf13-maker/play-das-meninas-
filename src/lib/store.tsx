@@ -27,6 +27,8 @@ type Ctx = {
   saveMatches: (ms: Match[]) => void
   replaceSessionMatches: (sessionId: string, ms: Match[]) => void
   saveChoice: (choice: StreakChoice) => void
+  /** Junta duas jogadoras numa so, preservando partidas, pontos e sequencia. */
+  mergePlayers: (fromId: string, intoId: string) => void
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   playerById: (id: string) => Player | undefined
@@ -62,6 +64,18 @@ function applyLocally(d: AppData, op: WriteOp): AppData {
       }
     case 'saveChoice':
       return { ...d, choices: upsert(d.choices, op.choice) }
+    case 'mergePlayers': {
+      let matches = d.matches
+      for (const m of op.matches) matches = upsert(matches, m)
+      let sessions = d.sessions
+      for (const s of op.sessions) sessions = upsert(sessions, s)
+      return {
+        ...d,
+        players: d.players.filter((p) => p.id !== op.fromId),
+        matches,
+        sessions,
+      }
+    }
   }
 }
 
@@ -214,6 +228,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       replaceSessionMatches: (sessionId, matches) =>
         push({ id: uid(), type: 'replaceSessionMatches', sessionId, matches }),
       saveChoice: (choice) => push({ id: uid(), type: 'saveChoice', choice }),
+      mergePlayers: (fromId, intoId) => {
+        const troca = (id: string) => (id === fromId ? intoId : id)
+        // partidas: a duplicada vira a jogadora que fica
+        const matches = data.matches
+          .filter((m) => [...m.team_a, ...m.team_b].includes(fromId))
+          .map((m) => ({
+            ...m,
+            team_a: m.team_a.map(troca) as [string, string],
+            team_b: m.team_b.map(troca) as [string, string],
+          }))
+        // presenca nos plays, sem duplicar quem ja estava
+        const sessions = data.sessions
+          .filter((s) => s.player_ids.includes(fromId))
+          .map((s) => ({ ...s, player_ids: [...new Set(s.player_ids.map(troca))] }))
+        push({ id: uid(), type: 'mergePlayers', fromId, intoId, matches, sessions })
+      },
       signIn: async (email, password) => {
         if (!supabase) return
         const { error: e } = await supabase.auth.signInWithPassword({ email, password })
@@ -248,6 +278,10 @@ async function runOp(repo: Repo, op: WriteOp): Promise<void> {
       return repo.saveMatches(op.matches)
     case 'saveChoice':
       return repo.saveChoice(op.choice)
+    case 'mergePlayers':
+      await repo.saveMatches(op.matches)
+      for (const s of op.sessions) await repo.saveSession(s)
+      return repo.deletePlayer(op.fromId)
   }
 }
 

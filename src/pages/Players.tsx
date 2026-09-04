@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
-import { Avatar, Empty } from '../components/ui'
+import { Avatar, Empty, Modal } from '../components/ui'
 import { squareThumb } from '../lib/image'
 import { useStore } from '../lib/store'
 import { uid, type Player } from '../lib/types'
 
 export default function Players({ onToast }: { onToast: (m: string) => void }) {
-  const { data, savePlayer, deletePlayer, canEdit, repo } = useStore()
+  const { data, savePlayer, deletePlayer, mergePlayers, canEdit, repo } = useStore()
   const [name, setName] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
+  const [juntando, setJuntando] = useState<Player | null>(null)
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const sorted = [...data.players].sort(
@@ -82,6 +83,18 @@ export default function Players({ onToast }: { onToast: (m: string) => void }) {
         </div>
       )}
 
+      {juntando && (
+        <JuntarJogadoras
+          origem={juntando}
+          onClose={() => setJuntando(null)}
+          onJuntar={(destinoId) => {
+            mergePlayers(juntando.id, destinoId)
+            setJuntando(null)
+            onToast('Jogadoras juntadas 🔗')
+          }}
+        />
+      )}
+
       <div className="card">
         <div className="section-title">👯 Jogadoras ({data.players.filter((p) => p.active).length} ativas)</div>
         {sorted.length === 0 ? (
@@ -138,6 +151,9 @@ export default function Players({ onToast }: { onToast: (m: string) => void }) {
                     <button className="btn ghost sm" onClick={() => void savePlayer({ ...p, active: !p.active })}>
                       {p.active ? 'Pausar' : 'Ativar'}
                     </button>
+                    <button className="btn ghost sm" title="juntar com outra jogadora" onClick={() => setJuntando(p)}>
+                      🔗
+                    </button>
                     <button
                       className="btn danger sm"
                       onClick={() => {
@@ -155,11 +171,70 @@ export default function Players({ onToast }: { onToast: (m: string) => void }) {
           </div>
         )}
         <p className="tiny muted" style={{ marginBottom: 0 }}>
+          Criou a mesma atleta duas vezes? Toque em <strong>🔗</strong> para juntar as duas:
+          partidas, pontos e sequência das duas passam para a que ficar.{' '}
           A foto aparece no pódio do ranking mensal. Toque na foto (ou em <em>pôr/trocar foto</em>) para escolher,
           e em <em>remover foto</em> para voltar às iniciais.
           Quem está <strong>pausada</strong> não aparece na hora de montar o play, mas mantém o histórico.
         </p>
       </div>
     </>
+  )
+}
+
+/** Junta uma jogadora duplicada em outra, preservando o historico das duas. */
+function JuntarJogadoras({
+  origem,
+  onClose,
+  onJuntar,
+}: {
+  origem: Player
+  onClose: () => void
+  onJuntar: (destinoId: string) => void
+}) {
+  const { data } = useStore()
+  const [destino, setDestino] = useState('')
+  const outras = [...data.players]
+    .filter((p) => p.id !== origem.id)
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  const alvo = outras.find((p) => p.id === destino)
+  const jogos = data.matches.filter((m) => [...m.team_a, ...m.team_b].includes(origem.id)).length
+
+  return (
+    <Modal title={`Juntar ${origem.name}`} onClose={onClose}>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        Use quando a mesma atleta foi criada duas vezes com nomes diferentes.
+        As <strong>{jogos} partida(s)</strong> de {origem.name} passam para a jogadora escolhida,
+        somando pontos e mantendo a sequência dela. Depois disso, <strong>{origem.name}</strong> deixa de existir.
+      </p>
+      <label className="field">
+        <span>{origem.name} é a mesma pessoa que…</span>
+        <select className="select" value={destino} onChange={(e) => setDestino(e.target.value)}>
+          <option value="">escolha a jogadora que fica</option>
+          {outras.map((p) => (
+            <option key={p.id} value={p.id}>{p.name}</option>
+          ))}
+        </select>
+      </label>
+      <button
+        className="btn pink block"
+        style={{ marginTop: 12 }}
+        disabled={!alvo}
+        onClick={() => {
+          if (!alvo) return
+          if (
+            confirm(
+              `Juntar "${origem.name}" em "${alvo.name}"?\n\n` +
+                `As partidas de ${origem.name} passam para ${alvo.name} e o nome "${origem.name}" some da lista.\n\n` +
+                `Essa ação não tem volta.`,
+            )
+          ) {
+            onJuntar(alvo.id)
+          }
+        }}
+      >
+        🔗 Juntar em {alvo?.name ?? '…'}
+      </button>
+    </Modal>
   )
 }

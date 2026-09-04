@@ -12,6 +12,7 @@ export type WriteOp =
   | { id: string; type: 'saveMatches'; matches: Match[] }
   | { id: string; type: 'replaceSessionMatches'; sessionId: string; matches: Match[] }
   | { id: string; type: 'saveChoice'; choice: StreakChoice }
+  | { id: string; type: 'mergePlayers'; fromId: string; intoId: string; matches: Match[]; sessions: PlaySession[] }
 
 const QUEUE_KEY = 'play-das-meninas:queue'
 const CACHE_KEY = 'play-das-meninas:cache'

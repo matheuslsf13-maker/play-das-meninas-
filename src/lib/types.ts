@@ -4,6 +4,8 @@ export type Player = {
   photo_url: string | null
   active: boolean
   created_at: string
+  /** Outras grafias que a lista do grupo ja usou para essa jogadora. */
+  aliases?: string[]
 }
 
 export type SessionStatus = 'open' | 'finished'

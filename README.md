@@ -117,6 +117,36 @@ O app foi feito para ser usado com uma mão, na beira da quadra:
 - **Dá para instalar** como aplicativo: no celular, abrir o link e escolher
   *Adicionar à tela de início* (Android: menu ⋮ → *Instalar app*).
 
+## Importando a lista do grupo
+
+Na criação do play, **Colar lista de confirmação do grupo** aceita a lista do
+WhatsApp do jeito que ela vem, numerada e com a grafia de cada uma:
+
+```
+1- Ingryd
+2- Pamella
+8-Figueiredo
+10 - Mariana Valério
+```
+
+O app tira a numeração e casa cada nome com a base, tolerando acento, caixa,
+apelido e erro de digitação. Na lista de exemplo acima (12 nomes), ele reconhece
+8 sozinho e destaca só os 4 duvidosos, já com o palpite: *"Figueiredo — é a Ana
+Figueiredo (85%)?"*. Cada linha vira uma escolha: vincular a quem já joga ou
+criar atleta nova.
+
+Ao confirmar, as grafias usadas ficam guardadas como **apelidos** da jogadora,
+então na semana seguinte "Carol", "Tete" e "Gabi" são reconhecidas sozinhas.
+Logo depois da importação há um botão para **desfazer** tudo, e se uma atleta
+repetida escapar, a aba **Meninas** tem o 🔗 para **juntar duas jogadoras** —
+as partidas, os pontos e a sequência das duas passam para a que ficar.
+
+## Play montado antes da hora
+
+O play pode ser criado horas antes de acontecer. Enquanto ele não é finalizado,
+aparece na tela inicial como **Próximo play**, e qualquer pessoa que abrir o link
+— mesmo sem login — vê as duplas de cada rodada e com quem vai jogar.
+
 ## Como usar no dia do play
 
 1. **Meninas** — cadastre as jogadoras (e as fotos).

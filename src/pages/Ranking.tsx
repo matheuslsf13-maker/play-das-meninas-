@@ -33,9 +33,15 @@ import {
   streakLevel,
 } from '../lib/streaks'
 import { useStore } from '../lib/store'
-import { monthLabel, monthOf, todayISO } from '../lib/types'
+import { dateLabel, monthLabel, monthOf, todayISO } from '../lib/types'
 
-export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
+export default function Ranking({
+  onToast,
+  onAbrirPlay,
+}: {
+  onToast: (m: string) => void
+  onAbrirPlay?: (sessionId: string) => void
+}) {
   const { data, nameOf, playerById, canEdit, saveChoice } = useStore()
 
   const months = useMemo(() => {
@@ -51,6 +57,15 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
   const activeMonth = months.includes(month) ? month : months[0]
 
   const streaks = useMemo(() => computeStreaks(data), [data])
+
+  // play ja montado e ainda nao finalizado: as leitoras podem ver as chaves
+  const emAndamento = useMemo(
+    () =>
+      [...data.sessions]
+        .filter((s) => s.status === 'open')
+        .sort((a, b) => b.date.localeCompare(a.date))[0],
+    [data.sessions],
+  )
 
   const rows = useMemo(() => {
     const ms = playedMatches(data, { month: activeMonth })
@@ -144,6 +159,22 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
           <div className="tiny muted">Beach Tennis · V3 Arena · <em>mais que um play, uma experiência!</em></div>
         </div>
       </div>
+
+      {emAndamento && (
+        <button className="card proximo" onClick={() => onAbrirPlay?.(emAndamento.id)}>
+          <span className="prox-selo">🏐</span>
+          <span className="grow" style={{ minWidth: 0 }}>
+            <span className="prox-titulo">
+              {emAndamento.date >= todayISO() ? 'Próximo play' : 'Play em andamento'}
+            </span>
+            <span className="prox-info">
+              {dateLabel(emAndamento.date)} · {emAndamento.player_ids.length} jogadoras ·{' '}
+              {emAndamento.courts} quadras · {emAndamento.rounds} rodadas
+            </span>
+            <span className="prox-acao">ver as duplas de cada rodada →</span>
+          </span>
+        </button>
+      )}
 
       <div className="card">
         <div className="row spread">

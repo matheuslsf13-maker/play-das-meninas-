@@ -666,3 +666,47 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .duo-fotos > :last-child { margin-left: -10px; border: 2px solid #fff; border-radius: 50%; }
 .duo-nomes { display: block; font-weight: 700; font-size: 14px; }
 .duo-pct { flex: none; font-weight: 800; color: var(--pink); font-size: 16px; }
+
+/* conferência da lista importada */
+.import-row {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fbf8f4;
+}
+.import-row.atencao { border-color: var(--orange); background: #fff6ec; }
+textarea.input { line-height: 1.45; }
+
+/* cartão do próximo play, na tela inicial */
+.card.proximo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  border: 1.5px solid var(--pink);
+  background: linear-gradient(135deg, #fff, #fdeef3);
+}
+.prox-selo {
+  flex: none;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: var(--pink);
+  color: #fff;
+  font-size: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.prox-titulo {
+  display: block;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: var(--pink);
+}
+.prox-info { display: block; font-weight: 700; font-size: 14px; color: var(--navy); }
+.prox-acao { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }

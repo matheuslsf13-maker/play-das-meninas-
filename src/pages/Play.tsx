@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import ImportarLista from '../components/ImportarLista'
 import { Avatar, Empty, Modal, StatBox, Stepper, shareOrCopy } from '../components/ui'
 import { fullRotationRounds, generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
@@ -11,9 +12,25 @@ import { useStore } from '../lib/store'
 import { dateLabel, todayISO, uid, type Match, type PlaySession } from '../lib/types'
 import { RankTable } from './Ranking'
 
-export default function Play({ onToast }: { onToast: (m: string) => void }) {
+export default function Play({
+  onToast,
+  abrir,
+  onAbriu,
+}: {
+  onToast: (m: string) => void
+  abrir?: string | null
+  onAbriu?: () => void
+}) {
   const { data } = useStore()
   const [openId, setOpenId] = useState<string | null>(null)
+
+  // veio da tela inicial pedindo para abrir um play especifico
+  useEffect(() => {
+    if (abrir) {
+      setOpenId(abrir)
+      onAbriu?.()
+    }
+  }, [abrir, onAbriu])
   const [creating, setCreating] = useState<Partial<PlaySession> | null>(null)
 
   const sessions = useMemo(
@@ -127,6 +144,7 @@ function NewPlay({
   const [courts, setCourts] = useState(preset.courts ?? 3)
   const [rounds, setRounds] = useState(preset.rounds ?? 8)
   const [rodizio, setRodizio] = useState(true)
+  const [importando, setImportando] = useState(false)
   const [target, setTarget] = useState(preset.target ?? 4)
   const [selected, setSelected] = useState<string[]>(preset.player_ids ?? [])
   const [busy, setBusy] = useState(false)
@@ -287,8 +305,14 @@ function NewPlay({
             <button className="btn ghost sm" onClick={() => setSelected([])}>Limpar</button>
           </div>
         </div>
+        <button className="btn purple block sm" style={{ marginTop: 10 }} onClick={() => setImportando(true)}>
+          📋 Colar lista de confirmação do grupo
+        </button>
+
         {available.length === 0 ? (
-          <Empty icon="👯">Cadastre as jogadoras na aba <strong>Meninas</strong>.</Empty>
+          <Empty icon="👯">
+            Cadastre as jogadoras na aba <strong>Meninas</strong> — ou cole a lista do grupo no botão acima.
+          </Empty>
         ) : (
           <div className="row wrap" style={{ gap: 8, marginTop: 10 }}>
             {available.map((p) => {
@@ -311,6 +335,14 @@ function NewPlay({
           </div>
         )}
       </div>
+
+      {importando && (
+        <ImportarLista
+          onAplicar={(ids) => setSelected(ids)}
+          onClose={() => setImportando(false)}
+          onToast={onToast}
+        />
+      )}
 
       <button className="btn pink block" disabled={selected.length < 4 || busy} onClick={() => void create()}>
         {busy ? 'Montando as duplas…' : `✨ Gerar ${effRounds || ''} rodadas e começar`}
