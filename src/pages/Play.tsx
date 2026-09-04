@@ -197,18 +197,26 @@ function NewPlay({
               <span>Quadras</span>
               <input className="input" type="number" min={1} max={12} value={courts}
                 onChange={(e) => setCourts(Math.max(1, Number(e.target.value) || 1))} />
+              <em className="hint">quadras disponíveis hoje — cada uma comporta 4 meninas por vez</em>
             </label>
             <label className="field">
               <span>Rodadas</span>
               <input className="input" type="number" min={1} max={30} value={rounds}
                 onChange={(e) => setRounds(Math.max(1, Number(e.target.value) || 1))} />
+              <em className="hint">quantas vezes vão trocar de dupla e jogar de novo</em>
             </label>
             <label className="field">
               <span>Vai até</span>
               <input className="input" type="number" min={1} max={21} value={target}
                 onChange={(e) => setTarget(Math.max(1, Number(e.target.value) || 4))} />
+              <em className="hint">pontos para vencer a partida — o padrão do Play é 4</em>
             </label>
           </div>
+          <p className="tiny muted" style={{ margin: '2px 2px 0' }}>
+            <strong>{rounds} rodadas × {effCourts} quadras = {rounds * effCourts} partidas</strong> no play.
+            Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos
+            ({target}x0 vale {target}, {target}x{target - 1} vale 1).
+          </p>
         </div>
       </div>
 
