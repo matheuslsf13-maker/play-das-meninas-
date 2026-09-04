@@ -114,7 +114,7 @@ export default function Stats() {
         </div>
         {curLevel && (
           <div className="banner warn" style={{ background: '#ffe9d6', color: '#8a4b06', margin: '12px 0 0' }}>
-            {curLevel.emoji} <strong>{curLevel.title}!</strong> Venceu os {curStreak} últimos plays que jogou.
+            {curLevel.emoji} <strong>{curLevel.title}!</strong> Venceu os {curStreak} últimos plays.
           </div>
         )}
       </div>

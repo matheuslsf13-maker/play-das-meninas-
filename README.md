@@ -102,8 +102,8 @@ Vencer o **ranking do dia** (1º lugar do play) em sequência acumula fogo:
 | 5 ou mais | 👑🔥 Lenda do play | +7 pontos por play |
 
 O bônus é creditado no play que estende a sequência, então ele entra no mês
-daquele play. **Play que a jogadora não joga não quebra a sequência** — só perde
-o fogo quem joga e não vence o dia.
+daquele play. **Perder o dia ou faltar ao play zera a sequência** — para manter o
+fogo aceso é preciso estar lá e vencer.
 
 ## Como as duplas são montadas
 

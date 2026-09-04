@@ -45,7 +45,8 @@ export type Streaks = {
 
 /**
  * Percorre os plays finalizados em ordem de data e apura as sequencias.
- * Play em que a jogadora nao esteve presente nao quebra a sequencia dela.
+ * So mantem o fogo aceso quem vence o dia: perder o dia OU faltar ao play
+ * zera a sequencia.
  */
 export function computeStreaks(data: AppData): Streaks {
   const finished = data.sessions
@@ -66,14 +67,11 @@ export function computeStreaks(data: AppData): Streaks {
     if (!champion) continue
     winnerOf.set(s.id, champion.player_id)
 
-    // so quem realmente jogou no dia tem a sequencia mexida
-    const present = new Set<string>()
-    for (const m of ms) for (const id of [...m.team_a, ...m.team_b]) present.add(id)
-
-    for (const id of present) {
-      const next = id === champion.player_id ? (current.get(id) ?? 0) + 1 : 0
-      current.set(id, next)
-      if (next > (best.get(id) ?? 0)) best.set(id, next)
+    // quem nao venceu o dia zera a sequencia -- inclusive quem faltou ao play
+    for (const p of data.players) {
+      const next = p.id === champion.player_id ? (current.get(p.id) ?? 0) + 1 : 0
+      current.set(p.id, next)
+      if (next > (best.get(p.id) ?? 0)) best.set(p.id, next)
     }
 
     const streak = current.get(champion.player_id) ?? 1

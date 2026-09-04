@@ -102,7 +102,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
                       {nameOf(f.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {lvl?.title} · venceu os {f.streak} últimos plays que jogou
+                      {lvl?.title} · venceu os {f.streak} últimos plays
                     </div>
                   </div>
                   <span className="badge open nowrap">+{streakBonusOf(f.streak)} se ganhar de novo</span>
@@ -113,7 +113,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
           <p className="tiny muted" style={{ marginBottom: 0 }}>
             Bônus por vencer o ranking do dia em sequência: 2 seguidas <strong>+2</strong>,
             3 seguidas <strong>+3</strong>, 4 seguidas <strong>+5</strong>, 5 ou mais <strong>+7</strong> pontos.
-            Play que você não joga não quebra a sequência.
+            Perder o dia ou faltar ao play zera a sequência.
           </p>
         </div>
       )}
@@ -168,7 +168,7 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
           ))}
         </div>
         <p className="tiny" style={{ color: '#9d99bb', marginBottom: 0 }}>
-          Play que você não joga não quebra a sequência.
+          Perder o dia ou faltar ao play zera a sequência — tem que estar lá e vencer!
         </p>
       </div>
     </>
