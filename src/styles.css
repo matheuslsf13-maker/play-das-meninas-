@@ -479,6 +479,14 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   cursor: pointer;
   padding: 0;
 }
+/* dentro de um texto corrido a acao vira link, nao etiqueta */
+.tiny .linkish {
+  font-size: inherit;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0;
+  text-decoration: underline;
+}
 
 /* ---------- indicador de sincronizacao ---------- */
 .sync {

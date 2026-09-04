@@ -25,7 +25,8 @@ estatísticas individuais, de duplas e de confrontos.
   **10 ou mais** vira 👑💎 **Rainha do Play** com `+10` por play. O app mostra o
   selo ao lado do nome, um card "Em chamas" no ranking e avisa ao fechar o dia.
 - **Ranking do dia e do mês** — pódio com as fotos do top 3 e classificação
-  completa (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento).
+  (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento). A tela
+  mostra o top 10 e expande para a lista inteira quando você quiser.
 - **Finalizar o dia** — soma os pontos ao ranking do mês, mostra o ranking do dia
   e oferece o botão para **gerar as duplas do próximo play**.
 - **Estatísticas** — por jogadora: com quem ela mais venceu, a parceria mais
@@ -33,7 +34,12 @@ estatísticas individuais, de duplas e de confrontos.
   melhores duplas do período.
 - **Compartilhar no WhatsApp** — botões que copiam o ranking do mês, o ranking do
   dia e as duplas de cada rodada já formatados para colar no grupo.
-- **Fotos** — cada jogadora pode ter foto de perfil (aparece no pódio).
+- **Imagem de fechamento do mês** — gera a arte do pódio (1080×1350, formato de
+  post/status) com as fotos do top 3, coroa na campeã, pontos, vitórias e as
+  demais colocadas. Um toque para compartilhar ou salvar.
+- **Fotos** — cada jogadora pode ter foto de perfil (aparece no pódio e na arte
+  do mês); dá para pôr, trocar e remover, e o arquivo antigo é apagado do
+  armazenamento junto.
 
 ## Como as meninas acessam
 
@@ -171,6 +177,7 @@ src/lib/scoring.ts   regra de pontuação (4x0=4, 4x1=3, 4x2=2, 4x3=1)
 src/lib/stats.ts     rankings, força estimada, parcerias e confrontos
 src/lib/streaks.ts   sequências de vitórias e bônus "em chamas"
 src/lib/share.ts     textos prontos para o WhatsApp
+src/lib/poster.ts    arte do fechamento do mês (canvas 1080x1350)
 src/data/            armazenamento (localStorage ou Supabase)
 src/pages/           Ranking · Play · Estatísticas · Jogadoras
 supabase/schema.sql  banco, permissões e bucket de fotos

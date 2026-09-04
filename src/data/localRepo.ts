@@ -71,6 +71,9 @@ export const localRepo: Repo = {
     d.matches = d.matches.filter((m) => m.session_id !== sessionId)
     write(d)
   },
+  async deletePhoto(_url: string) {
+    // no modo local a foto vive dentro do proprio registro da jogadora
+  },
   async uploadPhoto(_playerId: string, file: File) {
     return await new Promise<string>((resolve, reject) => {
       const fr = new FileReader()

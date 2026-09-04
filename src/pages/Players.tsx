@@ -35,10 +35,29 @@ export default function Players({ onToast }: { onToast: (m: string) => void }) {
     try {
       const thumb = await squareThumb(file)
       const url = await repo.uploadPhoto(p.id, thumb)
-      await savePlayer({ ...p, photo_url: url })
+      const antiga = p.photo_url
+      savePlayer({ ...p, photo_url: url })
+      if (antiga) await repo.deletePhoto(antiga) // nao deixa arquivo orfao
       onToast('Foto atualizada 📸')
     } catch (e) {
       onToast('Erro ao enviar a foto')
+      console.error(e)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function removePhoto(p: Player) {
+    if (!p.photo_url) return
+    if (!confirm(`Remover a foto de ${p.name}? No lugar dela voltam as iniciais.`)) return
+    setBusy(p.id)
+    try {
+      const antiga = p.photo_url
+      savePlayer({ ...p, photo_url: null })
+      await repo.deletePhoto(antiga)
+      onToast('Foto removida')
+    } catch (e) {
+      onToast('Erro ao remover a foto')
       console.error(e)
     } finally {
       setBusy(null)
@@ -89,7 +108,29 @@ export default function Players({ onToast }: { onToast: (m: string) => void }) {
                 <div className="grow">
                   <div style={{ fontWeight: 700 }} className="ellipsis">{p.name}</div>
                   <div className="tiny muted">
-                    {busy === p.id ? 'enviando foto…' : p.active ? 'ativa' : 'inativa'}
+                    {busy === p.id ? (
+                      'salvando foto…'
+                    ) : (
+                      <>
+                        {p.active ? 'ativa' : 'inativa'}
+                        {canEdit && (
+                          <>
+                            {' · '}
+                            <button className="linkish" onClick={() => fileRefs.current[p.id]?.click()}>
+                              {p.photo_url ? 'trocar foto' : 'pôr foto'}
+                            </button>
+                            {p.photo_url && (
+                              <>
+                                {' · '}
+                                <button className="linkish" onClick={() => void removePhoto(p)}>
+                                  remover foto
+                                </button>
+                              </>
+                            )}
+                          </>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
                 {canEdit && (
@@ -114,7 +155,8 @@ export default function Players({ onToast }: { onToast: (m: string) => void }) {
           </div>
         )}
         <p className="tiny muted" style={{ marginBottom: 0 }}>
-          A foto aparece no pódio do ranking mensal. Toque na foto para trocar.
+          A foto aparece no pódio do ranking mensal. Toque na foto (ou em <em>pôr/trocar foto</em>) para escolher,
+          e em <em>remover foto</em> para voltar às iniciais.
           Quem está <strong>pausada</strong> não aparece na hora de montar o play, mas mantém o histórico.
         </p>
       </div>

@@ -61,6 +61,14 @@ export const supabaseRepo: Repo = {
     const { data } = sb.storage.from('photos').getPublicUrl(path)
     return data.publicUrl
   },
+  async deletePhoto(url: string) {
+    const marca = '/storage/v1/object/public/photos/'
+    const i = url.indexOf(marca)
+    if (i < 0) return // foto de outra origem: nada a apagar aqui
+    const path = decodeURIComponent(url.slice(i + marca.length).split('?')[0])
+    const { error } = await client().storage.from('photos').remove([path])
+    if (error) console.warn('não consegui apagar a foto antiga:', error.message)
+  },
   subscribe(cb: () => void) {
     const sb = client()
     const ch = sb

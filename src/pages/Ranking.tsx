@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Avatar, Empty, StatBox, shareOrCopy } from '../components/ui'
+import { Avatar, Empty, Modal, StatBox, shareOrCopy } from '../components/ui'
+import { buildMonthPoster } from '../lib/poster'
 import { monthRankingText } from '../lib/share'
 import { POINTS_TABLE } from '../lib/scoring'
 import {
@@ -35,6 +36,9 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
   }, [data.sessions])
 
   const [month, setMonth] = useState(months[0])
+  const [verTodas, setVerTodas] = useState(false)
+  const [poster, setPoster] = useState<{ url: string; blob: Blob } | null>(null)
+  const [gerando, setGerando] = useState(false)
   const activeMonth = months.includes(month) ? month : months[0]
 
   const streaks = useMemo(() => computeStreaks(data), [data])
@@ -54,6 +58,56 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
   }, [data, activeMonth, rows.length])
 
   const posicoes = useMemo(() => positionsOf(rows), [rows])
+  const TOPO = 10
+  const visiveis = verTodas ? rows : rows.slice(0, TOPO)
+
+  async function gerarImagem() {
+    setGerando(true)
+    try {
+      const linhas = rows.slice(0, 8).map((s) => ({
+        name: nameOf(s.player_id),
+        points: s.points,
+        wins: s.wins,
+        losses: s.losses,
+        photo: playerById(s.player_id)?.photo_url ?? null,
+        streak: streaks.current.get(s.player_id) ?? 0,
+      }))
+      const blob = await buildMonthPoster(monthLabel(activeMonth), linhas)
+      setPoster({ url: URL.createObjectURL(blob), blob })
+    } catch (e) {
+      onToast('Não consegui gerar a imagem')
+      console.error(e)
+    } finally {
+      setGerando(false)
+    }
+  }
+
+  function fecharPoster() {
+    if (poster) URL.revokeObjectURL(poster.url)
+    setPoster(null)
+  }
+
+  async function salvarImagem() {
+    if (!poster) return
+    const arquivo = new File([poster.blob], `ranking-${activeMonth}.png`, { type: 'image/png' })
+    const nav = navigator as Navigator & {
+      canShare?: (d: { files: File[] }) => boolean
+      share?: (d: { files: File[]; text?: string }) => Promise<void>
+    }
+    if (nav.canShare?.({ files: [arquivo] }) && nav.share) {
+      try {
+        await nav.share({ files: [arquivo], text: `Ranking de ${monthLabel(activeMonth)} 🏆` })
+        return
+      } catch {
+        /* cancelou: cai para o download */
+      }
+    }
+    const a = document.createElement('a')
+    a.href = poster.url
+    a.download = arquivo.name
+    a.click()
+    onToast('Imagem salva 📸')
+  }
   const podium = rows.slice(0, 3)
   const order = [1, 0, 2] // 2º, 1º, 3º na tela
 
@@ -136,7 +190,12 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
       {rows.length > 0 && (
         <div className="card">
           <div className="section-title">📊 Classificação completa</div>
-          <RankTable rows={rows} fire={streaks.current} />
+          <RankTable rows={visiveis} fire={streaks.current} />
+          {rows.length > TOPO && (
+            <button className="btn ghost block sm" style={{ marginTop: 10 }} onClick={() => setVerTodas((v) => !v)}>
+              {verTodas ? `Mostrar só o top ${TOPO}` : `Ver todas as ${rows.length} jogadoras`}
+            </button>
+          )}
           <button
             className="btn pink block"
             style={{ marginTop: 12 }}
@@ -147,7 +206,22 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
           >
             💬 Compartilhar no WhatsApp
           </button>
+          <button className="btn purple block" style={{ marginTop: 8 }} disabled={gerando} onClick={() => void gerarImagem()}>
+            {gerando ? 'Montando a arte…' : '👑 Gerar imagem do fechamento do mês'}
+          </button>
         </div>
+      )}
+
+      {poster && (
+        <Modal title={`Fechamento de ${monthLabel(activeMonth)}`} onClose={fecharPoster}>
+          <img src={poster.url} alt="Imagem do ranking do mês" style={{ width: '100%', borderRadius: 14 }} />
+          <button className="btn pink block" style={{ marginTop: 12 }} onClick={() => void salvarImagem()}>
+            📲 Compartilhar / salvar imagem
+          </button>
+          <p className="tiny muted" style={{ marginBottom: 0 }}>
+            No celular também dá para segurar o dedo na imagem e escolher <em>salvar</em>.
+          </p>
+        </Modal>
       )}
 
       <div className="card dark">

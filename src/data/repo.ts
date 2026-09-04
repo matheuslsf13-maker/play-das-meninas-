@@ -10,6 +10,8 @@ export interface Repo {
   saveMatches(ms: Match[]): Promise<void>
   deleteMatchesOfSession(sessionId: string): Promise<void>
   uploadPhoto(playerId: string, file: File): Promise<string>
+  /** Apaga o arquivo da foto. Silencioso se a url nao for do nosso storage. */
+  deletePhoto(url: string): Promise<void>
   /** Notifica mudancas feitas por outras pessoas (so no modo online). */
   subscribe?(cb: () => void): () => void
 }
