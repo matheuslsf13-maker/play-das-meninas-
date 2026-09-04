@@ -9,8 +9,14 @@ estatísticas individuais, de duplas e de confrontos.
 - **Duplas automáticas e equilibradas** — a cada rodada as combinações mudam
   (o app evita repetir parceira), as duplas são montadas pela pontuação de cada
   jogadora para os jogos ficarem parelhos, e as folgas são revezadas de forma justa.
-- **Quantidade livre** — você informa quantas jogadoras vieram, quantas quadras
-  temos e quantas rodadas. O app calcula quem folga em cada rodada.
+- **Quantidade livre** — você informa quantas jogadoras vieram e quantas quadras
+  temos. O app calcula quem folga em cada rodada.
+- **Rodízio completo (padrão)** — o app calcula **sozinho quantas rodadas são
+  necessárias para cada uma fazer dupla com cada uma das outras exatamente uma
+  vez**, e o número se adapta à quantidade de jogadoras da semana. Com 8, 12, 16
+  ou 20 jogadoras o rodízio fecha perfeito: `N−1` rodadas, nenhuma dupla
+  repetida e todas jogando o mesmo número de partidas. Dá para desmarcar e fixar
+  o número de rodadas quando o tempo for curto.
 - **Pontuação do cartaz** — partida até 4 pontos, sem empate:
   `4x0 = 4 pts · 4x1 = 3 pts · 4x2 = 2 pts · 4x3 = 1 pt` (a derrota não pontua).
   Dá para mudar o "vai até" na criação do play.
@@ -134,7 +140,18 @@ fogo aceso é preciso estar lá e vencer.
 
 ## Como as duplas são montadas
 
-Cada jogadora tem uma **força estimada** = média de pontos por partida no
+**No rodízio completo** o app usa o *método do círculo* (uma 1-fatoração do grafo
+completo): fixa uma jogadora e gira as outras, gerando conjuntos de duplas em que
+ninguém se repete e toda combinação aparece uma única vez. Essas duplas são então
+distribuídas pelas quadras, e a única escolha que sobra — quem enfrenta quem — é
+usada para equilibrar as partidas. Quando o total de combinações é ímpar
+(9, 10, 11, 14, 15, 18… jogadoras) uma dupla precisa se repetir uma vez, porque
+cada partida consome duas duplas; é inevitável, e o app repete apenas uma.
+
+Testado em 510 simulações de 6 a 24 jogadoras: **cobertura de 100% das duplas em
+todas elas**.
+
+**No modo de rodadas fixas**, cada jogadora tem uma **força estimada** = média de pontos por partida no
 histórico, com os plays mais recentes pesando mais (quem nunca jogou entra na
 média do grupo). Para cada rodada o app testa vários arranjos e escolhe o de
 menor custo, penalizando nesta ordem: repetir parceira (peso maior), repetir

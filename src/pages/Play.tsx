@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Avatar, Empty, Modal, StatBox, shareOrCopy } from '../components/ui'
-import { generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } from '../lib/pairing'
+import { fullRotationRounds, generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
 import { buildHistory, computeStats, playedMatches, ratings, rankPlayers } from '../lib/stats'
@@ -125,6 +125,7 @@ function NewPlay({
   const [title, setTitle] = useState(preset.title ?? 'Play de Sexta')
   const [courts, setCourts] = useState(preset.courts ?? 3)
   const [rounds, setRounds] = useState(preset.rounds ?? 8)
+  const [rodizio, setRodizio] = useState(true)
   const [target, setTarget] = useState(preset.target ?? 4)
   const [selected, setSelected] = useState<string[]>(preset.player_ids ?? [])
   const [busy, setBusy] = useState(false)
@@ -135,8 +136,18 @@ function NewPlay({
 
   const maxCourts = Math.max(1, Math.floor(selected.length / 4))
   const effCourts = Math.min(courts, maxCourts)
-  const perPlayer = matchesPerPlayer(selected.length, effCourts, rounds)
+
+  // rodizio completo: rodadas suficientes para cada uma jogar com cada uma
+  const autoRounds = useMemo(
+    () => (selected.length >= 4 ? fullRotationRounds(selected.length, effCourts) : 0),
+    [selected.length, effCourts],
+  )
+  const effRounds = rodizio ? autoRounds : rounds
+  const perPlayer = rodizio
+    ? selected.length - 1
+    : matchesPerPlayer(selected.length, effCourts, effRounds)
   const restPerRound = selected.length - effCourts * 4
+  const possiveis = Math.max(0, selected.length - 1)
 
   function toggle(id: string) {
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
@@ -149,24 +160,25 @@ function NewPlay({
     }
     setBusy(true)
     try {
+      const plans = generateSchedule({
+        playerIds: selected,
+        courts: effCourts,
+        rounds: effRounds,
+        ratings: ratings(data, date),
+        history: buildHistory(playedMatches(data)),
+        mode: rodizio ? 'completo' : 'fixo',
+      })
       const session: PlaySession = {
         id: uid(),
         date,
         title: title.trim() || 'Play de Sexta',
         courts: effCourts,
-        rounds,
+        rounds: plans.length, // no rodizio, quem manda no total e o proprio rodizio
         target,
         player_ids: selected,
         status: 'open',
         created_at: new Date().toISOString(),
       }
-      const plans = generateSchedule({
-        playerIds: selected,
-        courts: effCourts,
-        rounds,
-        ratings: ratings(data, date),
-        history: buildHistory(playedMatches(data)),
-      })
       await saveSession(session)
       await saveMatches(planToMatches(session.id, plans))
       onToast('Duplas geradas! 🎾')
@@ -201,9 +213,18 @@ function NewPlay({
             </label>
             <label className="field">
               <span>Rodadas</span>
-              <input className="input" type="number" min={1} max={30} value={rounds}
-                onChange={(e) => setRounds(Math.max(1, Number(e.target.value) || 1))} />
-              <em className="hint">quantas vezes vão trocar de dupla e jogar de novo</em>
+              <input
+                className="input"
+                type="number"
+                min={1}
+                max={40}
+                value={rodizio ? effRounds || '' : rounds}
+                disabled={rodizio}
+                onChange={(e) => setRounds(Math.max(1, Number(e.target.value) || 1))}
+              />
+              <em className="hint">
+                {rodizio ? 'calculado pelo rodízio completo' : 'quantas vezes vão trocar de dupla e jogar de novo'}
+              </em>
             </label>
             <label className="field">
               <span>Vai até</span>
@@ -212,11 +233,45 @@ function NewPlay({
               <em className="hint">pontos para vencer a partida — o padrão do Play é 4</em>
             </label>
           </div>
+          <div className="toggle-card">
+            <label className="row" style={{ gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={rodizio} onChange={(e) => setRodizio(e.target.checked)} />
+              <span className="grow">
+                <strong>🔁 Todas jogam com todas</strong>
+                <span className="hint" style={{ marginTop: 2 }}>
+                  o app calcula quantas rodadas são necessárias para cada uma fazer dupla
+                  com cada uma das outras, exatamente uma vez
+                </span>
+              </span>
+            </label>
+          </div>
+
           <p className="tiny muted" style={{ margin: '2px 2px 0' }}>
-            <strong>{rounds} rodadas × {effCourts} quadras = {rounds * effCourts} partidas</strong> no play.
-            Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos
-            ({target}x0 vale {target}, {target}x{target - 1} vale 1).
+            {selected.length < 4 ? (
+              'Escolha as jogadoras abaixo para o app calcular as rodadas.'
+            ) : rodizio ? (
+              <>
+                <strong>{effRounds} rodadas × {effCourts} quadras = {effRounds * effCourts} partidas.</strong>{' '}
+                Cada uma joga <strong>{perPlayer} partidas</strong> e faz dupla com{' '}
+                <strong>cada uma das outras {possiveis}</strong> exatamente uma vez.
+              </>
+            ) : (
+              <>
+                <strong>{effRounds} rodadas × {effCourts} quadras = {effRounds * effCourts} partidas.</strong>{' '}
+                Cada uma joga <strong>{perPlayer} partidas</strong>, ou seja, faz dupla com{' '}
+                {Math.min(perPlayer, possiveis)} das {possiveis} possíveis parceiras.
+              </>
+            )}{' '}
+            Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos.
           </p>
+
+          {rodizio && effRounds > 12 && (
+            <div className="banner warn" style={{ margin: '10px 0 0' }}>
+              ⏱️ São <strong>{effRounds} rodadas</strong> — pode ser longo para uma noite só.
+              Se o tempo for curto, desmarque o rodízio e escolha quantas rodadas cabem;
+              o app continua evitando repetir duplas.
+            </div>
+          )}
         </div>
       </div>
 
@@ -247,15 +302,14 @@ function NewPlay({
         {selected.length >= 4 && (
           <div className="banner info" style={{ marginTop: 14, marginBottom: 0 }}>
             Com <strong>{selected.length} jogadoras</strong> dá para usar <strong>{effCourts} quadra(s)</strong> por rodada
-            {restPerRound > 0 ? ` (${restPerRound} folga(m) a cada rodada, revezando)` : ' (todas jogam todas as rodadas)'}.
-            Cada uma joga cerca de <strong>{perPlayer} partidas</strong>.
+            {restPerRound > 0 ? ` (${restPerRound} folga(m) a cada rodada, revezando de forma justa)` : ' (todas jogam todas as rodadas)'}.
             {effCourts < courts && ' Ajustei o número de quadras para caber todo mundo.'}
           </div>
         )}
       </div>
 
       <button className="btn pink block" disabled={selected.length < 4 || busy} onClick={() => void create()}>
-        {busy ? 'Montando as duplas…' : '✨ Gerar duplas e começar'}
+        {busy ? 'Montando as duplas…' : `✨ Gerar ${effRounds || ''} rodadas e começar`}
       </button>
     </>
   )
