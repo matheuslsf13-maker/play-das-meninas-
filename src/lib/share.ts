@@ -20,7 +20,7 @@ export function monthRankingText(
   nameOf: (id: string) => string,
   fire?: Map<string, number>,
 ): string {
-  const head = `🏆 RANKING DO MÊS — ${monthLabel(ym).toUpperCase()}\n_Play das Meninas · Super 8_\n`
+  const head = `🏆 RANKING DO MÊS — ${monthLabel(ym).toUpperCase()}\n_Play de Sexta · Beach Tennis_\n`
   const body = rows
     .map((s, i) => line(i, nameOf(s.player_id), s, fire?.get(s.player_id) ?? 0))
     .join('\n')

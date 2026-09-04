@@ -22,6 +22,8 @@ html, body, #root { height: 100%; }
 
 body {
   margin: 0;
+  overscroll-behavior-y: none; /* sem "puxar" a pagina no iPhone */
+  -webkit-tap-highlight-color: transparent;
   background: var(--cream);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
@@ -42,7 +44,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
   top: 0;
   z-index: 20;
   margin: 0 -14px 14px;
-  padding: 14px 16px 12px;
+  /* instalado na tela de inicio o app ocupa a area do relogio/notch:
+     sem esta folga o botao Entrar fica embaixo da barra de status */
+  padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
   background: linear-gradient(135deg, var(--navy) 0%, #2a2160 100%);
   color: #fff;
   border-radius: 0 0 22px 22px;
@@ -390,7 +394,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .row.queen .badge.open { background: #fff; color: #8a6300; }
 
 /* ---------- lancamento de placar no celular ---------- */
-.round-nav { padding: 12px; position: sticky; top: 74px; z-index: 15; }
+.round-nav { padding: 12px; position: sticky; top: calc(74px + env(safe-area-inset-top)); z-index: 15; }
 .chips-scroll {
   display: flex;
   gap: 6px;

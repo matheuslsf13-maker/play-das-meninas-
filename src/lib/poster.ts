@@ -69,12 +69,12 @@ function cabecalho(c: CanvasRenderingContext2D, mes: string) {
   c.font = '800 30px system-ui, Segoe UI, Arial, sans-serif'
   c.fillStyle = 'rgba(255,255,255,.55)'
   c.letterSpacing = '6px'
-  c.fillText('V3 ARENA · SUPER 8', W / 2, 92)
+  c.fillText('V3 ARENA · BEACH TENNIS', W / 2, 92)
   c.letterSpacing = '0px'
 
   c.font = '900 66px system-ui, Segoe UI, Arial, sans-serif'
   const a = 'PLAY '
-  const b = 'DAS MENINAS'
+  const b = 'DE SEXTA'
   const inicio = (W - c.measureText(a).width - c.measureText(b).width) / 2
   c.textAlign = 'left'
   c.fillStyle = '#fff'

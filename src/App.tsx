@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal, Toast, useToast } from './components/ui'
 import { useStore } from './lib/store'
 import Play from './pages/Play'
@@ -18,6 +18,17 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 export default function App() {
   const { loading, error, online, canEdit, userEmail, signIn, signOut, sync, pendingCount } = useStore()
   const [tab, setTab] = useState<Tab>('ranking')
+  const primeiraRenderizacao = useRef(true)
+
+  // trocar de aba comeca a leitura do topo; sem isso a pagina "pula" quando a
+  // aba nova e mais curta que a anterior
+  useEffect(() => {
+    if (primeiraRenderizacao.current) {
+      primeiraRenderizacao.current = false
+      return
+    }
+    window.scrollTo(0, 0)
+  }, [tab])
   const [login, setLogin] = useState(false)
   const { msg, show } = useToast()
 
@@ -26,9 +37,9 @@ export default function App() {
       <header className="topbar">
         <div className="row spread">
           <div>
-            <h1>Play <span>das Meninas</span></h1>
+            <h1>Play <span>de Sexta</span></h1>
             <div className="sub">
-              <span>Super 8 · V3 Arena</span>
+              <span>Beach Tennis · V3 Arena</span>
               {online && canEdit ? (
                 <span className={`sync ${sync}`}>
                   <span className="dot" />
