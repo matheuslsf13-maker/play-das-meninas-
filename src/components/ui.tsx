@@ -66,6 +66,41 @@ export function Stepper({
   )
 }
 
+/**
+ * Logo do campeonato. Enquanto o arquivo public/logo.png nao existir,
+ * mostra um selo desenhado, para a tela nunca ficar com imagem quebrada.
+ */
+export function Logo({ size = 64 }: { size?: number }) {
+  const [ok, setOk] = React.useState(true)
+  if (ok) {
+    return (
+      <img
+        src={`${import.meta.env.BASE_URL}logo.png`}
+        alt="Play de Sexta"
+        width={size}
+        height={size}
+        style={{ width: size, height: size, objectFit: 'contain', flex: 'none' }}
+        onError={() => setOk(false)}
+      />
+    )
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flex: 'none' }} aria-label="Play de Sexta">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#f5c518" />
+          <stop offset="1" stopColor="#ef4b7d" />
+        </linearGradient>
+      </defs>
+      <circle cx="50" cy="50" r="46" fill="none" stroke="url(#lg)" strokeWidth="4" />
+      <circle cx="50" cy="42" r="24" fill="url(#lg)" />
+      <path d="M32 30c10 8 10 18 0 26M68 30c-10 8-10 18 0 26" stroke="#141a3c" strokeWidth="3.5" fill="none" strokeLinecap="round" />
+      <rect x="30" y="34" width="40" height="11" rx="5" fill="#2b1b4d" />
+      <text x="50" y="80" textAnchor="middle" fontSize="17" fontWeight="800" fill="#6d3fa0" fontFamily="system-ui, sans-serif">SEXTA</text>
+    </svg>
+  )
+}
+
 export function Empty({ icon = '🎾', children }: { icon?: string; children: React.ReactNode }) {
   return (
     <div className="empty">

@@ -10,6 +10,11 @@ export type PosterRow = {
   losses: number
   photo: string | null
   streak: number
+  /** Titulo do status usado no fechamento (so aparece para a campea). */
+  statusTitle?: string
+  statusEmoji?: string
+  /** Pontos que vieram do status. */
+  statusPoints?: number
 }
 
 const W = 1080
@@ -21,17 +26,24 @@ const GOLD = '#f5c518'
 const SILVER = '#c9cede'
 const BRONZE = '#e0a06a'
 
-export async function buildMonthPoster(mes: string, rows: PosterRow[]): Promise<Blob> {
+export async function buildMonthPoster(
+  mes: string,
+  rows: PosterRow[],
+  logoUrl?: string,
+): Promise<Blob> {
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
   const c = canvas.getContext('2d')
   if (!c) throw new Error('Este navegador não conseguiu gerar a imagem.')
 
-  const fotos = await Promise.all(rows.slice(0, 3).map((r) => loadImage(r.photo)))
+  const [fotos, logo] = await Promise.all([
+    Promise.all(rows.slice(0, 3).map((r) => loadImage(r.photo))),
+    loadImage(logoUrl ?? null),
+  ])
 
   fundo(c)
-  cabecalho(c, mes)
+  cabecalho(c, mes, logo)
   podio(c, rows, fotos)
   demais(c, rows)
   rodape(c)
@@ -64,8 +76,23 @@ function fundo(c: CanvasRenderingContext2D) {
   c.restore()
 }
 
-function cabecalho(c: CanvasRenderingContext2D, mes: string) {
+function cabecalho(c: CanvasRenderingContext2D, mes: string, logo: HTMLImageElement | null) {
   c.textAlign = 'center'
+
+  if (logo) {
+    // com o logo, ele fala por si: o nome do camp sai do texto
+    const lado = 210
+    c.drawImage(logo, W / 2 - lado / 2, 26, lado, lado)
+    c.fillStyle = PINK
+    faixa(c, W / 2 - 330, 250, 660, 76, 38)
+    c.fillStyle = '#fff'
+    c.font = '800 38px system-ui, Segoe UI, Arial, sans-serif'
+    c.letterSpacing = '2px'
+    c.fillText(`RANKING DE ${mes.toUpperCase()}`, W / 2, 301)
+    c.letterSpacing = '0px'
+    return
+  }
+
   c.font = '800 30px system-ui, Segoe UI, Arial, sans-serif'
   c.fillStyle = 'rgba(255,255,255,.55)'
   c.letterSpacing = '6px'
@@ -107,7 +134,10 @@ function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImage
     const topoBarra = chao - b.alturaBarra
     const cy = topoBarra - b.raio - 78 // espaco para o nome entre a foto e a barra
 
-    if (b.i === 0) coroa(c, b.x, cy - b.raio - 56, 104)
+    if (b.i === 0) {
+      if (r.statusTitle) chamas(c, b.x, cy, b.raio) // usou o status: pega fogo
+      coroa(c, b.x, cy - b.raio - 56, 104)
+    }
     retrato(c, fotos[b.i], r.name, b.x, cy, b.raio, b.cor)
 
     // nome
@@ -133,12 +163,83 @@ function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImage
     c.fillStyle = 'rgba(0,0,0,.55)'
     c.fillText(`${r.wins}V · ${r.losses}D`, b.x, topoBarra + 164)
   }
+
+  if (rows[0]) faixaDoTitulo(c, rows[0], chao)
+}
+
+/** Faixa do status usado pela campea do mes, sob o podio. */
+function faixaDoTitulo(c: CanvasRenderingContext2D, r: PosterRow, chao: number) {
+  if (!r.statusTitle) return
+  const texto = `${r.statusEmoji ?? '🔥'} ${r.statusTitle.toUpperCase()}`
+  c.textAlign = 'center'
+  c.font = '900 34px system-ui, Segoe UI, Arial, sans-serif'
+  const larg = Math.min(W - 120, c.measureText(texto).width + 120)
+  const y = chao + 18
+  const g = c.createLinearGradient(W / 2 - larg / 2, 0, W / 2 + larg / 2, 0)
+  g.addColorStop(0, '#ff7a18')
+  g.addColorStop(0.5, PINK)
+  g.addColorStop(1, '#9b2fae')
+  c.fillStyle = g
+  faixa(c, W / 2 - larg / 2, y, larg, 62, 31)
+  c.fillStyle = '#fff'
+  c.fillText(texto, W / 2, y + 43)
+  if (r.statusPoints) {
+    c.font = '700 24px system-ui, Segoe UI, Arial, sans-serif'
+    c.fillStyle = 'rgba(255,255,255,.85)'
+    c.fillText(`status usado no fechamento · +${r.statusPoints} pontos`, W / 2, y + 90)
+  }
+}
+
+/**
+ * Labaredas atras da foto da campea. Fogo sobe: nada embaixo, linguas longas e
+ * pontudas em cima, e uma camada interna mais clara para dar profundidade.
+ */
+function chamas(c: CanvasRenderingContext2D, cx: number, cy: number, raio: number) {
+  const irregular = [1, 0.62, 0.86, 0.5, 1.18, 0.7, 0.95, 0.55, 1.08, 0.75]
+  c.save()
+  for (const camada of [
+    { n: 20, mult: 1, cor0: '#ffe36e', cor1: '#ff6a1f', op: 1 },
+    { n: 14, mult: 0.55, cor0: '#fffbe6', cor1: '#ffb020', op: 0.9 },
+  ]) {
+    c.globalAlpha = camada.op
+    for (let i = 0; i < camada.n; i++) {
+      const ang = (Math.PI * 2 * i) / camada.n - Math.PI / 2
+      const paraCima = (1 - Math.sin(ang)) / 2 // 1 no topo, 0 na base
+      if (paraCima < 0.3) continue // fogo nao desce
+      const alt = raio * (paraCima ** 1.6) * 1.25 * camada.mult * irregular[i % irregular.length]
+      if (alt < raio * 0.1) continue
+      const larg = raio * 0.115 * (0.7 + paraCima * 0.6)
+      const tombo = (i % 2 === 0 ? 1 : -1) * alt * 0.28 // a ponta tomba para um lado
+
+      const bx = cx + Math.cos(ang) * (raio - 2)
+      const by = cy + Math.sin(ang) * (raio - 2)
+      const nx = -Math.sin(ang) * larg
+      const ny = Math.cos(ang) * larg
+      const px = cx + Math.cos(ang) * (raio + alt) - Math.sin(ang) * tombo
+      const py = cy + Math.sin(ang) * (raio + alt) + Math.cos(ang) * tombo
+
+      const g = c.createLinearGradient(bx, by, px, py)
+      g.addColorStop(0, camada.cor0)
+      g.addColorStop(0.6, camada.cor1)
+      g.addColorStop(1, 'rgba(239,75,125,0)')
+      c.fillStyle = g
+      c.beginPath()
+      c.moveTo(bx + nx, by + ny)
+      // barriga larga perto da base e ponta fina, como lingua de fogo
+      c.bezierCurveTo(bx + nx * 1.9, by + ny * 1.9, px + nx * 0.5, py + ny * 0.5, px, py)
+      c.bezierCurveTo(px - nx * 0.5, py - ny * 0.5, bx - nx * 1.9, by - ny * 1.9, bx - nx, by - ny)
+      c.closePath()
+      c.fill()
+    }
+  }
+  c.restore()
 }
 
 function demais(c: CanvasRenderingContext2D, rows: PosterRow[]) {
-  const resto = rows.slice(3, 8)
+  const comTitulo = Boolean(rows[0]?.statusTitle)
+  const resto = rows.slice(3, comTitulo ? 6 : 8)
   if (resto.length === 0) return
-  let y = 1024
+  let y = comTitulo ? 1120 : 1024
   c.textAlign = 'left'
   resto.forEach((r, i) => {
     c.fillStyle = 'rgba(255,255,255,.08)'

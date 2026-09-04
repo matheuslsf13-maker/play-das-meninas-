@@ -585,3 +585,23 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .stepper.off { opacity: .6; }
 .stepper.off button { background: #ece5dc; }
 .hint.aviso { color: var(--orange); font-weight: 700; }
+
+/* selo do campeonato na tela inicial */
+.card.hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(135deg, #fff 60%, #fdeef3);
+  border-color: #f3dbe4;
+}
+.hero-txt { min-width: 0; }
+.hero-nome {
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: .3px;
+  background: linear-gradient(90deg, var(--purple), var(--pink), var(--orange));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.topbar img, .topbar svg { filter: drop-shadow(0 2px 6px rgba(0,0,0,.3)); }

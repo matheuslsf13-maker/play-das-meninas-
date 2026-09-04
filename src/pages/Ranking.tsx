@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Avatar, Empty, Modal, StatBox, shareOrCopy } from '../components/ui'
+import { Avatar, Empty, Logo, Modal, StatBox, shareOrCopy } from '../components/ui'
 import { buildMonthPoster } from '../lib/poster'
 import { monthRankingText } from '../lib/share'
 import { POINTS_TABLE } from '../lib/scoring'
@@ -77,15 +77,26 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
   async function gerarImagem() {
     setGerando(true)
     try {
-      const linhas = rows.slice(0, 8).map((s) => ({
-        name: nameOf(s.player_id),
-        points: s.points,
-        wins: s.wins,
-        losses: s.losses,
-        photo: playerById(s.player_id)?.photo_url ?? null,
-        streak: streaks.current.get(s.player_id) ?? 0,
-      }))
-      const blob = await buildMonthPoster(monthLabel(activeMonth), linhas)
+      const usoDoMes = new Map(
+        streaks.awards.filter((a) => a.month === activeMonth).map((a) => [a.player_id, a]),
+      )
+      const linhas = rows.slice(0, 8).map((s, i) => {
+        // o fogo e o titulo so aparecem para a campea do mes que usou o status
+        const usou = i === 0 ? usoDoMes.get(s.player_id) : undefined
+        const lvl = usou ? streakLevel(usou.streak) : null
+        return {
+          name: nameOf(s.player_id),
+          points: s.points,
+          wins: s.wins,
+          losses: s.losses,
+          photo: playerById(s.player_id)?.photo_url ?? null,
+          streak: streaks.current.get(s.player_id) ?? 0,
+          statusTitle: lvl?.title,
+          statusEmoji: lvl?.emoji,
+          statusPoints: usou?.bonus,
+        }
+      })
+      const blob = await buildMonthPoster(monthLabel(activeMonth), linhas, `${import.meta.env.BASE_URL}logo.png`)
       setPoster({ url: URL.createObjectURL(blob), blob })
     } catch (e) {
       onToast('Não consegui gerar a imagem')
@@ -126,6 +137,14 @@ export default function Ranking({ onToast }: { onToast: (m: string) => void }) {
 
   return (
     <>
+      <div className="card hero">
+        <Logo size={92} />
+        <div className="hero-txt">
+          <div className="hero-nome">Play de Sexta</div>
+          <div className="tiny muted">Beach Tennis · V3 Arena · <em>mais que um play, uma experiência!</em></div>
+        </div>
+      </div>
+
       <div className="card">
         <div className="row spread">
           <div className="section-title" style={{ margin: 0 }}>🏆 Ranking do mês</div>

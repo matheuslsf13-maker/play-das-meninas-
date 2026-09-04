@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Modal, Toast, useToast } from './components/ui'
+import { Logo, Modal, Toast, useToast } from './components/ui'
 import { useStore } from './lib/store'
 import Play from './pages/Play'
 import Players from './pages/Players'
@@ -36,7 +36,8 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="row spread">
-          <div>
+          <Logo size={46} />
+          <div className="grow">
             <h1>Play <span>de Sexta</span></h1>
             <div className="sub">
               <span>Beach Tennis · V3 Arena</span>
