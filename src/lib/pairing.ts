@@ -387,6 +387,81 @@ export function historyFromMatches(matches: Match[]): History {
   return buildHistory(matches)
 }
 
+/* ------------------------------------------------------------------
+   Ajuste ao vivo: quadra livre esperando quem ainda esta jogando.
+
+   Na pratica as quadras nao terminam juntas. Quando uma acaba antes, a
+   proxima partida dela costuma pedir alguem que ainda esta em jogo na outra
+   quadra -- e a quadra fica parada por causa de uma pessoa so. Aqui a gente
+   troca quem esta ocupada por quem esta livre, mantendo o mesmo criterio das
+   duplas: quem jogou menos entra primeiro, sem repetir parceira e com as
+   duplas equilibradas.
+   ------------------------------------------------------------------ */
+
+export type SubstituicaoOpts = {
+  /** As quatro jogadoras da partida que se quer comecar. */
+  time: [string, string, string, string]
+  /** Quem esta em quadra agora, em outras partidas. */
+  ocupadas: Set<string>
+  /** Todas as jogadoras do play. */
+  todas: string[]
+  /** Quantas partidas cada uma ja jogou hoje. */
+  jogos: Map<string, number>
+  ratings: Map<string, number>
+  history: History
+}
+
+export type Substituicao = { sai: string; entra: string }
+
+/**
+ * Troca as jogadoras ocupadas da partida por jogadoras livres.
+ * Devolve as trocas; vazio quando ninguem esta ocupada ou nao ha substituta.
+ */
+export function liberarPartida(opts: SubstituicaoOpts): Substituicao[] {
+  const { time, ocupadas, todas, jogos, ratings, history } = opts
+  const noTime = new Set(time)
+  const presas = time.filter((id) => ocupadas.has(id))
+  if (presas.length === 0) return []
+
+  const livres = todas.filter((id) => !ocupadas.has(id) && !noTime.has(id))
+  if (livres.length === 0) return []
+
+  const trocas: Substituicao[] = []
+  const time2 = [...time] as string[]
+  const usadas = new Set<string>()
+
+  for (const sai of presas) {
+    const candidatas = livres.filter((id) => !usadas.has(id))
+    if (candidatas.length === 0) break
+
+    const posicao = time2.indexOf(sai)
+    const melhor = candidatas
+      .map((entra) => {
+        const proposto = time2.map((id) => (id === sai ? entra : id))
+        return { entra, custo: custoDaPartida(proposto, ratings, history) + (jogos.get(entra) ?? 0) * 45 }
+      })
+      .sort((a, b) => a.custo - b.custo)[0]
+
+    time2[posicao] = melhor.entra
+    usadas.add(melhor.entra)
+    trocas.push({ sai, entra: melhor.entra })
+  }
+  return trocas
+}
+
+/** Custo de uma partida ja montada, nos mesmos pesos do sorteio das rodadas. */
+function custoDaPartida(time: string[], ratings: Map<string, number>, hist: History): number {
+  const [p1, p2, p3, p4] = time
+  const r = (id: string) => ratings.get(id) ?? 2
+  let c = 0
+  c += W_PARTNER * ((hist.partner.get(pairKey(p1, p2)) ?? 0) + (hist.partner.get(pairKey(p3, p4)) ?? 0))
+  for (const x of [p1, p2]) {
+    for (const y of [p3, p4]) c += W_OPPONENT * (hist.opponent.get(pairKey(x, y)) ?? 0)
+  }
+  c += W_BALANCE * Math.abs(r(p1) + r(p2) - r(p3) - r(p4))
+  return c
+}
+
 /** Quantas rodadas cada jogadora joga, dado o formato do dia. */
 export function matchesPerPlayer(players: number, courts: number, rounds: number): number {
   const c = Math.max(0, Math.min(courts, Math.floor(players / 4)))

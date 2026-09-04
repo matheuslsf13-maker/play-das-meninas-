@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import ImportarLista from '../components/ImportarLista'
 import { Avatar, Empty, Modal, StatBox, Stepper, shareOrCopy } from '../components/ui'
-import { fullRotationRounds, generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } from '../lib/pairing'
+import {
+  fullRotationRounds,
+  generateSchedule,
+  liberarPartida,
+  matchesPerPlayer,
+  planToMatches,
+  type RoundPlan,
+} from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
-import { buildHistory, computeStats, playedMatches, ratings, rankPlayers } from '../lib/stats'
+import { buildHistory, computeStats, pairKey, playedMatches, ratings, rankPlayers } from '../lib/stats'
 import { buildDayPoster } from '../lib/poster'
 import { computeStreaks, streakLevel } from '../lib/streaks'
 import { useWakeLock } from '../lib/wakelock'
@@ -365,6 +372,16 @@ function NewPlay({
   )
 }
 
+/** Devolve a partida com uma jogadora trocada por outra. */
+function trocarNaPartida(m: Match, sai: string, entra: string): Match {
+  const troca = (id: string) => (id === sai ? entra : id)
+  return {
+    ...m,
+    team_a: m.team_a.map(troca) as [string, string],
+    team_b: m.team_b.map(troca) as [string, string],
+  }
+}
+
 /* ------------------------------------------------------------- detalhe */
 
 function PlayDetail({
@@ -474,6 +491,69 @@ function PlayDetail({
     onToast('Imagem salva 📸')
   }
 
+  /**
+   * Refaz so as partidas que ainda nao aconteceram, preservando tudo que ja
+   * tem placar. Serve para quando o play saiu do roteiro -- trocas na mao,
+   * quadra travada, ou um play que comecou no papel e entrou no app depois.
+   */
+  function regenerarPendentes() {
+    const jogos = new Map<string, number>()
+    for (const m of matches) {
+      if (!isPlayed(m)) continue
+      for (const id of [...m.team_a, ...m.team_b]) jogos.set(id, (jogos.get(id) ?? 0) + 1)
+    }
+    const hist = buildHistory([...playedMatches(data).filter((m) => m.session_id !== session.id), ...matches.filter(isPlayed)])
+    const forca = ratings(data, session.date)
+    const novas: Match[] = []
+
+    for (const [, ms] of rounds) {
+      const pendentes = ms.filter((m) => !isPlayed(m))
+      if (pendentes.length === 0) continue
+      // quem ja jogou nesta rodada nao pode entrar de novo nela
+      const naRodada = new Set(ms.filter(isPlayed).flatMap((m) => [...m.team_a, ...m.team_b]))
+      const pool = session.player_ids.filter((id) => !naRodada.has(id))
+      const precisa = pendentes.length * 4
+      if (pool.length < precisa) continue
+
+      // entram primeiro as que jogaram menos hoje
+      const escolhidas = pool
+        .map((id) => ({ id, n: jogos.get(id) ?? 0, sorte: Math.random() }))
+        .sort((a, b) => a.n - b.n || a.sorte - b.sorte)
+        .slice(0, precisa)
+        .map((x) => x.id)
+
+      const plano = generateSchedule({
+        playerIds: escolhidas,
+        courts: pendentes.length,
+        rounds: 1,
+        ratings: forca,
+        history: hist,
+        historyWeight: 1,
+        mode: 'fixo',
+      })
+      plano[0]?.matches.forEach((nova, i) => {
+        const alvo = pendentes[i]
+        if (!alvo) return
+        novas.push({ ...alvo, team_a: nova.team_a, team_b: nova.team_b })
+        for (const id of [...nova.team_a, ...nova.team_b]) jogos.set(id, (jogos.get(id) ?? 0) + 1)
+        // alimenta o historico para as rodadas seguintes nao repetirem
+        for (const t of [nova.team_a, nova.team_b]) {
+          hist.partner.set(pairKey(t[0], t[1]), (hist.partner.get(pairKey(t[0], t[1])) ?? 0) + 1)
+        }
+        for (const x of nova.team_a) {
+          for (const y of nova.team_b) hist.opponent.set(pairKey(x, y), (hist.opponent.get(pairKey(x, y)) ?? 0) + 1)
+        }
+      })
+    }
+
+    if (novas.length === 0) {
+      onToast('Não há partidas pendentes para refazer')
+      return
+    }
+    saveMatches(novas)
+    onToast(`${novas.length} partida(s) refeita(s) 🔄`)
+  }
+
   async function regenerate() {
     if (doneCount > 0 && !confirm('Já existem placares lançados. Gerar novas duplas apaga todos os resultados deste play. Continuar?')) return
     const plans = generateSchedule({
@@ -492,6 +572,65 @@ function PlayDetail({
     await saveSession({ ...session, status: 'finished' })
     setShowRank(true)
     onToast('Play finalizado! Pontos somados ao ranking do mês 🏆')
+  }
+
+  /**
+   * O que esta rolando agora em cada quadra: a primeira partida sem placar
+   * daquela quadra. As quadras nao terminam juntas, entao "estar em jogo" nao
+   * tem a ver com a rodada, e sim com a partida que a quadra ainda nao fechou.
+   */
+  const emAndamento = useMemo(() => {
+    const porQuadra = new Map<number, Match>()
+    for (const m of matches) {
+      if (isPlayed(m)) continue
+      if (!porQuadra.has(m.court)) porQuadra.set(m.court, m)
+    }
+    return porQuadra
+  }, [matches])
+
+  /** Quem esta em quadra agora, nas OUTRAS quadras. */
+  function ocupadasFora(m: Match): Set<string> {
+    const fora = new Set<string>()
+    for (const [court, atual] of emAndamento) {
+      if (court === m.court) continue
+      for (const id of [...atual.team_a, ...atual.team_b]) fora.add(id)
+    }
+    return fora
+  }
+
+  /** Esta partida e a proxima a entrar na quadra dela? */
+  function ehAProxima(m: Match): boolean {
+    return emAndamento.get(m.court)?.id === m.id
+  }
+
+  /** Troca as ocupadas por quem esta livre, mantendo equilibrio e duplas novas. */
+  function liberarQuadra(m: Match) {
+    const ocupadas = ocupadasFora(m)
+    const jogos = new Map<string, number>()
+    for (const x of matches) {
+      if (!isPlayed(x)) continue
+      for (const id of [...x.team_a, ...x.team_b]) jogos.set(id, (jogos.get(id) ?? 0) + 1)
+    }
+    const trocas = liberarPartida({
+      time: [...m.team_a, ...m.team_b] as [string, string, string, string],
+      ocupadas,
+      todas: session.player_ids,
+      jogos,
+      ratings: ratings(data, session.date),
+      history: buildHistory(playedMatches(data)),
+    })
+    if (trocas.length === 0) {
+      onToast('Não há ninguém livre para entrar agora')
+      return
+    }
+    let atualizada = m
+    for (const t of trocas) atualizada = trocarNaPartida(atualizada, t.sai, t.entra)
+    saveMatches([atualizada])
+    onToast(trocas.map((t) => `${nameOf(t.sai)} → ${nameOf(t.entra)}`).join(' · '))
+  }
+
+  function trocar(m: Match, sai: string, entra: string) {
+    saveMatches([trocarNaPartida(m, sai, entra)])
   }
 
   const plansForShare: RoundPlan[] = rounds.map(([round, ms]) => ({
@@ -524,7 +663,14 @@ function PlayDetail({
             onToast(ok ? 'Duplas copiadas 💬' : 'Não consegui copiar')
           }}>💬 Enviar duplas</button>
           <button className="btn ghost sm" onClick={() => setShowRank(true)}>🏆 Ranking do dia</button>
-          {canEdit && !finished && <button className="btn ghost sm" onClick={() => void regenerate()}>🔄 Refazer duplas</button>}
+          {canEdit && !finished && (
+            <>
+              <button className="btn ghost sm" onClick={regenerarPendentes}>
+                🔄 Refazer o que falta
+              </button>
+              <button className="btn ghost sm" onClick={() => void regenerate()}>♻️ Refazer tudo</button>
+            </>
+          )}
         </div>
       </div>
 
@@ -533,6 +679,10 @@ function PlayDetail({
         session={session}
         editable={canEdit && !finished}
         onScore={setScore}
+        ocupadasFora={ocupadasFora}
+        ehAProxima={ehAProxima}
+        onLiberar={liberarQuadra}
+        onTrocar={trocar}
       />
 
       {canEdit && !finished && (
@@ -617,11 +767,19 @@ function RoundBoard({
   session,
   editable,
   onScore,
+  ocupadasFora,
+  ehAProxima,
+  onLiberar,
+  onTrocar,
 }: {
   rounds: [number, Match[]][]
   session: PlaySession
   editable: boolean
   onScore: (m: Match, a: number | null, b: number | null) => void
+  ocupadasFora: (m: Match) => Set<string>
+  ehAProxima: (m: Match) => boolean
+  onLiberar: (m: Match) => void
+  onTrocar: (m: Match, sai: string, entra: string) => void
 }) {
   const { nameOf } = useStore()
   // primeira rodada que ainda falta placar; se acabou tudo, fica na ultima
@@ -674,7 +832,18 @@ function RoundBoard({
           <div className="card" key={r}>
             {all && <div className="section-title">🔄 Rodada {r}</div>}
             {ms.map((m) => (
-              <MatchCard key={m.id} match={m} target={session.target} editable={editable} onScore={onScore} />
+              <MatchCard
+                key={m.id}
+                match={m}
+                target={session.target}
+                editable={editable}
+                onScore={onScore}
+                ocupadas={ocupadasFora(m)}
+                proxima={ehAProxima(m)}
+                jogadorasDoPlay={session.player_ids}
+                onLiberar={() => onLiberar(m)}
+                onTrocar={(sai, entra) => onTrocar(m, sai, entra)}
+              />
             ))}
             {byes.length > 0 && <div className="tiny muted">Folga nesta rodada: {byes.map(nameOf).join(', ')}</div>}
           </div>
@@ -689,26 +858,65 @@ function MatchCard({
   target,
   editable,
   onScore,
+  ocupadas,
+  proxima,
+  jogadorasDoPlay,
+  onLiberar,
+  onTrocar,
 }: {
   match: Match
   target: number
   editable: boolean
   onScore: (m: Match, a: number | null, b: number | null) => void
+  ocupadas: Set<string>
+  proxima: boolean
+  jogadorasDoPlay: string[]
+  onLiberar: () => void
+  onTrocar: (sai: string, entra: string) => void
 }) {
   const { nameOf, playerById } = useStore()
   const [winner, setWinner] = useState<'a' | 'b' | null>(null)
+  const [trocando, setTrocando] = useState<string | null>(null)
+  const noTime = [...match.team_a, ...match.team_b]
+  const presas = proxima ? noTime.filter((id) => ocupadas.has(id)) : []
   const played = isPlayed(match)
   const [pa, pb] = played ? matchPoints(match.score_a as number, match.score_b as number) : [0, 0]
   const aWin = played && (match.score_a as number) > (match.score_b as number)
+
+  const nomeJogadora = (id: string) =>
+    editable ? (
+      <button
+        type="button"
+        className={`nome-troca${ocupadas.has(id) ? ' ocupada' : ''}`}
+        onClick={(e) => { e.stopPropagation(); setTrocando(id) }}
+        title="tocar para trocar de jogadora"
+      >
+        {nameOf(id)}
+        {ocupadas.has(id) && ' ⏳'}
+      </button>
+    ) : (
+      <>{nameOf(id)}</>
+    )
 
   const duo = (ids: [string, string]) => (
     <>
       <Avatar player={playerById(ids[0])} size={26} />
       <Avatar player={playerById(ids[1])} size={26} />
       <span className="names ellipsis">
-        {nameOf(ids[0])} <span className="muted">+</span> {nameOf(ids[1])}
+        {nomeJogadora(ids[0])} <span className="muted">+</span> {nomeJogadora(ids[1])}
       </span>
     </>
+  )
+
+  const modalTroca = trocando && (
+    <TrocarJogadora
+      sai={trocando}
+      noTime={noTime}
+      ocupadas={ocupadas}
+      jogadorasDoPlay={jogadorasDoPlay}
+      onEscolher={(entra) => { onTrocar(trocando, entra); setTrocando(null) }}
+      onClose={() => setTrocando(null)}
+    />
   )
 
   // ---- ja tem placar: mostra o resultado ----
@@ -734,6 +942,7 @@ function MatchCard({
             ✏️ Trocar placar
           </button>
         )}
+        {modalTroca}
       </div>
     )
   }
@@ -749,6 +958,17 @@ function MatchCard({
       </div>
     )
   }
+
+  /** Aviso de quadra parada esperando quem ainda esta jogando. */
+  const avisoPresas = presas.length > 0 && (
+    <div className="travada">
+      ⏳ <strong>{presas.map(nameOf).join(', ')}</strong>{' '}
+      {presas.length === 1 ? 'ainda está jogando' : 'ainda estão jogando'} em outra quadra.
+      <button className="btn pink sm block" style={{ marginTop: 8 }} onClick={onLiberar}>
+        🔄 Chamar quem está livre
+      </button>
+    </div>
+  )
 
   // ---- passo 2: quantos games a perdedora fez ----
   if (winner) {
@@ -776,14 +996,16 @@ function MatchCard({
             </button>
           ))}
         </div>
+        {modalTroca}
       </div>
     )
   }
 
   // ---- passo 1: quem venceu ----
   return (
-    <div className="match live">
+    <div className={`match live${presas.length ? ' travada-borda' : ''}`}>
       <div className="match-head"><span>Quadra {match.court}</span><span>quem venceu?</span></div>
+      {avisoPresas}
       <button className="pick-team" onClick={() => setWinner('a')}>
         {duo(match.team_a)}
         <span className="pick-tag">venceu</span>
@@ -793,6 +1015,53 @@ function MatchCard({
         {duo(match.team_b)}
         <span className="pick-tag">venceu</span>
       </button>
+      {modalTroca}
     </div>
+  )
+}
+
+/** Escolhe quem entra no lugar de alguem, mostrando quem esta livre. */
+function TrocarJogadora({
+  sai,
+  noTime,
+  ocupadas,
+  jogadorasDoPlay,
+  onEscolher,
+  onClose,
+}: {
+  sai: string
+  noTime: string[]
+  ocupadas: Set<string>
+  jogadorasDoPlay: string[]
+  onEscolher: (entra: string) => void
+  onClose: () => void
+}) {
+  const { nameOf, playerById } = useStore()
+  const candidatas = jogadorasDoPlay
+    .filter((id) => !noTime.includes(id))
+    .sort((a, b) => {
+      const oa = ocupadas.has(a) ? 1 : 0
+      const ob = ocupadas.has(b) ? 1 : 0
+      return oa - ob || nameOf(a).localeCompare(nameOf(b), 'pt-BR')
+    })
+
+  return (
+    <Modal title={`Quem entra no lugar de ${nameOf(sai)}?`} onClose={onClose}>
+      {candidatas.length === 0 ? (
+        <Empty icon="👯">Todas as jogadoras já estão nesta partida.</Empty>
+      ) : (
+        <div className="stack">
+          {candidatas.map((id) => (
+            <button key={id} className="duo-row" onClick={() => onEscolher(id)}>
+              <Avatar player={playerById(id)} size={34} />
+              <span className="grow ellipsis" style={{ fontWeight: 700 }}>{nameOf(id)}</span>
+              <span className="tiny nowrap" style={{ fontWeight: 800, color: ocupadas.has(id) ? 'var(--orange)' : 'var(--teal)' }}>
+                {ocupadas.has(id) ? 'em quadra' : 'livre'}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </Modal>
   )
 }
