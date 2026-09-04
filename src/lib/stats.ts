@@ -119,6 +119,58 @@ export function partnerStats(matches: Match[]): Map<string, Map<string, PairKeyS
   return out
 }
 
+/** Uma dupla que ja jogou junta, com o retrospecto dela. */
+export type DuoStat = {
+  key: string
+  a: string
+  b: string
+  matches: number
+  wins: number
+  losses: number
+  points: number
+  gamesWon: number
+  gamesLost: number
+  /** Ids dos plays em que a dupla jogou. */
+  sessions: Set<string>
+}
+
+/** Todas as duplas ja formadas no periodo, agregadas. */
+export function duoStats(matches: Match[]): Map<string, DuoStat> {
+  const out = new Map<string, DuoStat>()
+  const add = (ids: [string, string], venceu: boolean, pts: number, favor: number, contra: number, sid: string) => {
+    const key = pairKey(ids[0], ids[1])
+    let d = out.get(key)
+    if (!d) {
+      const [a, b] = ids[0] < ids[1] ? ids : [ids[1], ids[0]]
+      d = { key, a, b, matches: 0, wins: 0, losses: 0, points: 0, gamesWon: 0, gamesLost: 0, sessions: new Set() }
+      out.set(key, d)
+    }
+    d.matches++
+    d.points += pts
+    d.gamesWon += favor
+    d.gamesLost += contra
+    d.sessions.add(sid)
+    if (venceu) d.wins++
+    else d.losses++
+  }
+  for (const m of matches) {
+    const a = m.score_a as number
+    const b = m.score_b as number
+    const [pa, pb] = matchPoints(a, b)
+    add(m.team_a, a > b, pa, a, b, m.session_id)
+    add(m.team_b, b > a, pb, b, a, m.session_id)
+  }
+  return out
+}
+
+/** Partidas de uma dupla especifica, da mais recente para a mais antiga. */
+export function duoMatches(matches: Match[], a: string, b: string): Match[] {
+  const alvo = pairKey(a, b)
+  return matches.filter(
+    (m) => pairKey(m.team_a[0], m.team_a[1]) === alvo || pairKey(m.team_b[0], m.team_b[1]) === alvo,
+  )
+}
+
 /** Estatistica de confronto: contra quem cada jogadora jogou e como foi. */
 export function opponentStats(matches: Match[]): Map<string, Map<string, PairKeyStat>> {
   const out = new Map<string, Map<string, PairKeyStat>>()

@@ -29,9 +29,11 @@ estatísticas individuais, de duplas e de confrontos.
   mostra o top 10 e expande para a lista inteira quando você quiser.
 - **Finalizar o dia** — soma os pontos ao ranking do mês, mostra o ranking do dia
   e oferece o botão para **gerar as duplas do próximo play**.
-- **Estatísticas** — por jogadora: com quem ela mais venceu, a parceria mais
-  difícil, de quem ela mais ganha, para quem mais perde, além do ranking das
-  melhores duplas do período.
+- **Estatísticas** — em dois modos. *Por jogadora*: aproveitamento, saldo,
+  sequência e status, pódios, dias vencidos, com quem mais venceu, parceria mais
+  difícil, de quem mais ganha e para quem mais perde. *Por dupla*: a lista de
+  todas as duplas que já se formaram, com busca e ordenação, e o retrospecto
+  completo de cada uma — inclusive contra quem jogaram e o placar de cada partida.
 - **Compartilhar no WhatsApp** — botões que copiam o ranking do mês, o ranking do
   dia e as duplas de cada rodada já formatados para colar no grupo.
 - **Imagem de fechamento do mês** — gera a arte do pódio (1080×1350, formato de
