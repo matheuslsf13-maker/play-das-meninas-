@@ -12,6 +12,7 @@ import {
   winRate,
   type PairKeyStat,
 } from '../lib/stats'
+import { applyBonuses, computeStreaks, streakLevel } from '../lib/streaks'
 import { useStore } from '../lib/store'
 import { monthLabel, monthOf } from '../lib/types'
 
@@ -31,13 +32,24 @@ export default function Stats() {
     [data, period],
   )
 
-  const stats = useMemo(() => computeStats(matches), [data, matches])
+  const streaks = useMemo(() => computeStreaks(data), [data])
+  const stats = useMemo(() => {
+    const awards = period === 'all' ? streaks.awards : streaks.awards.filter((a) => monthOf(a.date) === period)
+    return applyBonuses(computeStats(matches), awards)
+  }, [matches, streaks, period])
   const ranked = useMemo(() => rankPlayers(stats, nameOf), [stats, nameOf])
   const partners = useMemo(() => partnerStats(matches), [matches])
   const opponents = useMemo(() => opponentStats(matches), [matches])
 
   const selected = playerId || ranked[0]?.player_id || ''
   const s = stats.get(selected) ?? emptyStat(selected)
+  const dateOfSession = new Map(data.sessions.map((x) => [x.id, x.date]))
+  const dayTitles = [...streaks.winnerOf.entries()].filter(
+    ([sid, id]) => id === selected && (period === 'all' || monthOf(dateOfSession.get(sid) ?? '') === period),
+  ).length
+  const curStreak = streaks.current.get(selected) ?? 0
+  const bestStreak = streaks.best.get(selected) ?? 0
+  const curLevel = streakLevel(curStreak)
   const myPartners = sortPairs(partners.get(selected))
   const myOpponents = sortPairs(opponents.get(selected))
 
@@ -85,6 +97,7 @@ export default function Stats() {
             <div style={{ fontSize: 18, fontWeight: 800 }}>{nameOf(selected)}</div>
             <div className="small muted">
               {s.days} play(s) · média de {avgPoints(s).toFixed(2)} pontos por partida
+              {dayTitles > 0 && ` · ${dayTitles} play(s) vencido(s)`}
             </div>
           </div>
         </div>
@@ -95,7 +108,15 @@ export default function Stats() {
           <StatBox k="Vitórias" v={s.wins} />
           <StatBox k="Derrotas" v={s.losses} />
           <StatBox k="Saldo" v={balance(s) > 0 ? `+${balance(s)}` : balance(s)} />
+          <StatBox k="Bônus 🔥" v={s.bonus > 0 ? `+${s.bonus}` : 0} />
+          <StatBox k="Sequência" v={curStreak} />
+          <StatBox k="Melhor seq." v={bestStreak} />
         </div>
+        {curLevel && (
+          <div className="banner warn" style={{ background: '#ffe9d6', color: '#8a4b06', margin: '12px 0 0' }}>
+            {curLevel.emoji} <strong>{curLevel.title}!</strong> Venceu os {curStreak} últimos plays que jogou.
+          </div>
+        )}
       </div>
 
       <div className="card">

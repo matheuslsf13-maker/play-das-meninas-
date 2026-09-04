@@ -1,20 +1,35 @@
 import type { PlayerStat } from './stats'
 import { balance } from './stats'
+import { streakLevel } from './streaks'
 import { dateLabel, monthLabel } from './types'
 
 const MEDALS = ['🥇', '🥈', '🥉']
 
-function line(i: number, name: string, s: PlayerStat): string {
+function line(i: number, name: string, s: PlayerStat, streak = 0): string {
   const medal = MEDALS[i] ?? `${i + 1}º`
   const bal = balance(s)
   const sign = bal > 0 ? '+' : ''
-  return `${medal} ${name} — ${s.points} pts (${s.wins}V/${s.losses}D, saldo ${sign}${bal})`
+  const fire = streak >= 2 ? ` ${streakLevel(streak)?.emoji}` : ''
+  const bonus = s.bonus > 0 ? ` [+${s.bonus} 🔥]` : ''
+  return `${medal} ${name}${fire} — ${s.points} pts${bonus} (${s.wins}V/${s.losses}D, saldo ${sign}${bal})`
 }
 
-export function monthRankingText(ym: string, rows: PlayerStat[], nameOf: (id: string) => string): string {
+export function monthRankingText(
+  ym: string,
+  rows: PlayerStat[],
+  nameOf: (id: string) => string,
+  fire?: Map<string, number>,
+): string {
   const head = `🏆 RANKING DO MÊS — ${monthLabel(ym).toUpperCase()}\n_Play das Meninas · Super 8_\n`
-  const body = rows.map((s, i) => line(i, nameOf(s.player_id), s)).join('\n')
-  return `${head}\n${body}\n\nMais que um play, uma experiência! 💗`
+  const body = rows
+    .map((s, i) => line(i, nameOf(s.player_id), s, fire?.get(s.player_id) ?? 0))
+    .join('\n')
+  const emChamas = rows
+    .filter((s) => (fire?.get(s.player_id) ?? 0) >= 2)
+    .map((s) => `${streakLevel(fire!.get(s.player_id) as number)?.emoji} ${nameOf(s.player_id)} venceu os ${fire!.get(s.player_id)} últimos plays!`)
+    .join('\n')
+  const extra = emChamas ? `\n\n${emChamas}` : ''
+  return `${head}\n${body}${extra}\n\nMais que um play, uma experiência! 💗`
 }
 
 export function dayRankingText(
@@ -22,10 +37,15 @@ export function dayRankingText(
   title: string,
   rows: PlayerStat[],
   nameOf: (id: string) => string,
+  award?: { player_id: string; streak: number; bonus: number },
 ): string {
   const head = `🎾 ${title.toUpperCase()} — ${dateLabel(date)}\nRanking do dia:\n`
   const body = rows.map((s, i) => line(i, nameOf(s.player_id), s)).join('\n')
-  return `${head}\n${body}`
+  const lvl = award ? streakLevel(award.streak) : null
+  const extra = award && lvl
+    ? `\n\n${lvl.emoji} ${nameOf(award.player_id)} está ${lvl.title.toUpperCase()}: ${award.streak} plays seguidos vencendo e +${award.bonus} pontos de bônus no ranking do mês!`
+    : ''
+  return `${head}\n${body}${extra}`
 }
 
 export function scheduleText(

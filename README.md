@@ -14,6 +14,10 @@ estatísticas individuais, de duplas e de confrontos.
 - **Pontuação do cartaz** — partida até 4 pontos, sem empate:
   `4x0 = 4 pts · 4x1 = 3 pts · 4x2 = 2 pts · 4x3 = 1 pt` (a derrota não pontua).
   Dá para mudar o "vai até" na criação do play.
+- **Bônus "em chamas" 🔥** — quem vence o ranking do dia em plays seguidos ganha
+  ponto extra no mês: 2 seguidos `+2`, 3 seguidos `+3`, 4 seguidos `+5`,
+  5 ou mais `+7`. O app mostra o selo de fogo ao lado do nome, um card
+  "Em chamas" no ranking e avisa na hora de fechar o dia.
 - **Ranking do dia e do mês** — pódio com as fotos do top 3 e classificação
   completa (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento).
 - **Finalizar o dia** — soma os pontos ao ranking do mês, mostra o ranking do dia
@@ -86,6 +90,21 @@ e as mesmas duas variáveis de ambiente.
 5. **Finalizar o dia e somar os pontos** — aparece o ranking do dia para
    compartilhar, e o botão para já deixar o próximo play montado.
 
+## Regra do bônus em chamas
+
+Vencer o **ranking do dia** (1º lugar do play) em sequência acumula fogo:
+
+| Plays seguidos vencidos | Selo | Bônus no ranking do mês |
+| --- | --- | --- |
+| 2 | 🔥 Em chamas | +2 pontos |
+| 3 | 🔥🔥 Pegando fogo | +3 pontos |
+| 4 | 🔥🔥🔥 Imparável | +5 pontos |
+| 5 ou mais | 👑🔥 Lenda do play | +7 pontos por play |
+
+O bônus é creditado no play que estende a sequência, então ele entra no mês
+daquele play. **Play que a jogadora não joga não quebra a sequência** — só perde
+o fogo quem joga e não vence o dia.
+
 ## Como as duplas são montadas
 
 Cada jogadora tem uma **força estimada** = média de pontos por partida no
@@ -101,6 +120,7 @@ forte com a mais fraca na mesma quadra.
 src/lib/pairing.ts   geração das rodadas e duplas equilibradas
 src/lib/scoring.ts   regra de pontuação (4x0=4, 4x1=3, 4x2=2, 4x3=1)
 src/lib/stats.ts     rankings, força estimada, parcerias e confrontos
+src/lib/streaks.ts   sequências de vitórias e bônus "em chamas"
 src/lib/share.ts     textos prontos para o WhatsApp
 src/data/            armazenamento (localStorage ou Supabase)
 src/pages/           Ranking · Play · Estatísticas · Jogadoras

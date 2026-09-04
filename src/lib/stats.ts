@@ -11,6 +11,8 @@ export type PlayerStat = {
   gamesWon: number
   gamesLost: number
   days: number
+  /** Pontos de bonus por sequencia de vitorias ("em chamas"). */
+  bonus: number
 }
 
 export type PairKeyStat = {
@@ -22,7 +24,7 @@ export type PairKeyStat = {
 }
 
 export const emptyStat = (player_id: string): PlayerStat => ({
-  player_id, matches: 0, wins: 0, losses: 0, points: 0, gamesWon: 0, gamesLost: 0, days: 0,
+  player_id, matches: 0, wins: 0, losses: 0, points: 0, gamesWon: 0, gamesLost: 0, days: 0, bonus: 0,
 })
 
 export function winRate(s: PlayerStat): number {

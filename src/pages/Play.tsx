@@ -4,6 +4,7 @@ import { generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } fro
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
 import { buildHistory, computeStats, playedMatches, ratings, rankPlayers } from '../lib/stats'
+import { computeStreaks, streakLevel } from '../lib/streaks'
 import { useStore } from '../lib/store'
 import { dateLabel, todayISO, uid, type Match, type PlaySession } from '../lib/types'
 import { RankTable } from './Ranking'
@@ -292,6 +293,13 @@ function PlayDetail({
   const doneCount = matches.filter(isPlayed).length
   const finished = session.status === 'finished'
 
+  // bonus "em chamas" creditado neste play (so existe depois de finalizado)
+  const award = useMemo(
+    () => computeStreaks(data).awards.find((a) => a.session_id === session.id),
+    [data, session.id],
+  )
+  const awardLevel = award ? streakLevel(award.streak) : null
+
   async function setScore(m: Match, a: number | null, b: number | null) {
     await saveMatches([{ ...m, score_a: a, score_b: b }])
   }
@@ -394,12 +402,18 @@ function PlayDetail({
             <Empty>Nenhum placar lançado ainda.</Empty>
           ) : (
             <>
+              {award && awardLevel && (
+                <div className="banner warn" style={{ background: '#ffe9d6', color: '#8a4b06' }}>
+                  {awardLevel.emoji} <strong>{nameOf(award.player_id)}</strong> está {awardLevel.title.toLowerCase()}!
+                  {' '}{award.streak} plays seguidos vencendo — <strong>+{award.bonus} pontos</strong> de bônus no ranking do mês.
+                </div>
+              )}
               <RankTable rows={dayRows} />
               <button
                 className="btn pink block"
                 style={{ marginTop: 12 }}
                 onClick={async () => {
-                  const ok = await shareOrCopy(dayRankingText(session.date, session.title, dayRows, nameOf))
+                  const ok = await shareOrCopy(dayRankingText(session.date, session.title, dayRows, nameOf, award))
                   onToast(ok ? 'Ranking do dia copiado 💬' : 'Não consegui copiar')
                 }}
               >💬 Compartilhar no WhatsApp</button>
