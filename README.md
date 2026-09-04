@@ -52,13 +52,16 @@ salvos apenas no navegador de quem está usando. Ótimo para testar.
    bucket `photos` para as fotos de perfil.
 3. Em **Authentication → Users**, clique em *Add user* e crie o login de quem vai
    organizar os plays (e-mail + senha). Só quem tem login consegue editar.
-4. Copie `.env.example` para `.env` e preencha com os dados de
+4. Preencha [`src/config.ts`](src/config.ts) com os dados de
    **Project Settings → API**:
 
+   ```ts
+   export const SUPABASE_URL = 'https://xxxx.supabase.co'   // Project URL
+   export const SUPABASE_ANON_KEY = 'eyJhbGciOi...'         // anon public
    ```
-   VITE_SUPABASE_URL=https://xxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
-   ```
+
+   (Também dá para usar as variáveis `VITE_SUPABASE_URL` e
+   `VITE_SUPABASE_ANON_KEY` num `.env` — elas têm prioridade sobre o config.)
 
 5. `npm run dev` — o cabeçalho passa a mostrar a bolinha verde.
 
@@ -71,8 +74,10 @@ O workflow [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) public
 o site a cada push na `main`.
 
 1. No repositório: **Settings → Pages → Source: GitHub Actions**.
-2. Em **Settings → Secrets and variables → Actions**, crie os secrets
-   `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+2. Com `src/config.ts` preenchido não precisa de mais nada. (Se preferir não
+   versionar as chaves, apague-as do config e crie os secrets
+   `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` em
+   **Settings → Secrets and variables → Actions**.)
 3. Faça um push na `main`. O link fica
    `https://<seu-usuario>.github.io/<nome-do-repo>/` — é esse link que você manda
    no grupo do WhatsApp.
