@@ -492,3 +492,17 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .sync.saving .dot { background: var(--yellow); }
 .sync.pending .dot { background: var(--orange); }
 .sync.saved .dot { background: #4ade80; }
+
+/* no computador a barra de abas acompanha a coluna do app */
+@media (min-width: 760px) {
+  .tabbar {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 720px;
+    border-radius: 18px 18px 0 0;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+  }
+}

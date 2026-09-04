@@ -73,8 +73,10 @@ function upsert<T extends { id: string }>(list: T[], item: T): T[] {
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const repo = hasSupabase ? supabaseRepo : localRepo
   // no modo online o app abre com o ultimo estado conhecido, mesmo sem sinal
-  const [data, setData] = useState<AppData>(() => (hasSupabase ? loadCache<AppData>() : null) ?? emptyData())
-  const [loading, setLoading] = useState(true)
+  const cached = hasSupabase ? loadCache<AppData>() : null
+  const [data, setData] = useState<AppData>(() => cached ?? emptyData())
+  // com dados em cache a tela ja aparece; a atualizacao vem em segundo plano
+  const [loading, setLoading] = useState(cached === null)
   const [error, setError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
   const [queue, setQueue] = useState<WriteOp[]>(() => (hasSupabase ? loadQueue() : []))
@@ -92,7 +94,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const reload = useCallback(async () => {
     try {
-      const loaded = await repo.load()
+      // sem isso, uma conexao que trava deixa o app preso em "Carregando..."
+      const loaded = await withTimeout(repo.load(), 15000)
       // reaplica por cima o que ainda nao subiu, senao a tela "perde" o que
       // foi lancado sem sinal ate a fila terminar de enviar
       const d = queueRef.current.reduce(applyLocally, loaded)
@@ -105,6 +108,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }, [repo])
+
+  // tenta de novo sozinho quando a primeira carga falha (sinal ruim)
+  useEffect(() => {
+    if (!error || loading) return
+    const t = window.setTimeout(() => void reload(), 15000)
+    return () => window.clearTimeout(t)
+  }, [error, loading, reload])
 
   /** Envia a fila de escritas, uma por vez, e tenta de novo se cair a rede. */
   const drain = useCallback(async () => {
@@ -239,6 +249,16 @@ export function useStore(): Ctx {
   const ctx = useContext(StoreContext)
   if (!ctx) throw new Error('useStore precisa estar dentro de <StoreProvider>')
   return ctx
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error('Sem resposta do servidor. Verifique sua conexão.')), ms)
+    promise.then(
+      (v) => { clearTimeout(t); resolve(v) },
+      (e) => { clearTimeout(t); reject(e) },
+    )
+  })
 }
 
 function messageOf(e: unknown): string {

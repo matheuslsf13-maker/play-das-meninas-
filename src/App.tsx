@@ -45,7 +45,7 @@ export default function App() {
           {online && (
             userEmail
               ? <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>
-              : <button className="btn ghost sm" onClick={() => setLogin(true)}>Entrar</button>
+              : <button className="btn pink sm" onClick={() => setLogin(true)}>Entrar</button>
           )}
         </div>
       </header>
@@ -59,8 +59,12 @@ export default function App() {
         error && <div className="banner err">{error}</div>
       )}
       {online && !canEdit && (
-        <div className="banner warn">
-          Você está vendo o ranking em modo leitura. Quem organiza o play entra em <strong>Entrar</strong> para lançar os resultados.
+        <div className="banner warn row spread" style={{ gap: 12 }}>
+          <span className="grow">
+            Você está no <strong>modo leitura</strong>: dá para ver tudo, mas não para lançar resultados.
+            Quem organiza o play precisa entrar.
+          </span>
+          <button className="btn pink sm nowrap" onClick={() => setLogin(true)}>🔑 Entrar</button>
         </div>
       )}
       {!online && (
