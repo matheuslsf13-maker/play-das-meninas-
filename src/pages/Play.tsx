@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Avatar, Empty, Modal, StatBox, shareOrCopy } from '../components/ui'
+import { Avatar, Empty, Modal, StatBox, Stepper, shareOrCopy } from '../components/ui'
 import { fullRotationRounds, generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
@@ -205,33 +205,36 @@ function NewPlay({
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
           <div className="grid3">
-            <label className="field">
+            <div className="field">
               <span>Quadras</span>
-              <input className="input" type="number" min={1} max={12} value={courts}
-                onChange={(e) => setCourts(Math.max(1, Number(e.target.value) || 1))} />
-              <em className="hint">quadras disponíveis hoje — cada uma comporta 4 meninas por vez</em>
-            </label>
-            <label className="field">
+              <Stepper value={courts} min={1} max={12} onChange={setCourts} />
+              <em className={`hint${selected.length >= 4 && effCourts < courts ? ' aviso' : ''}`}>
+                {selected.length < 4
+                  ? 'cada quadra comporta 4 meninas por vez'
+                  : effCourts < courts
+                    ? `com ${selected.length} jogadoras cabem ${maxCourts} quadra(s); vou usar ${effCourts}`
+                    : 'quadras disponíveis hoje'}
+              </em>
+            </div>
+            <div className="field">
               <span>Rodadas</span>
-              <input
-                className="input"
-                type="number"
+              <Stepper
+                value={rodizio ? effRounds : rounds}
                 min={1}
                 max={40}
-                value={rodizio ? effRounds || '' : rounds}
+                onChange={setRounds}
                 disabled={rodizio}
-                onChange={(e) => setRounds(Math.max(1, Number(e.target.value) || 1))}
+                vazio="—"
               />
               <em className="hint">
-                {rodizio ? 'calculado pelo rodízio completo' : 'quantas vezes vão trocar de dupla e jogar de novo'}
+                {rodizio ? 'calculado pelo rodízio completo' : 'quantas vezes vão trocar de dupla'}
               </em>
-            </label>
-            <label className="field">
+            </div>
+            <div className="field">
               <span>Vai até</span>
-              <input className="input" type="number" min={1} max={21} value={target}
-                onChange={(e) => setTarget(Math.max(1, Number(e.target.value) || 4))} />
-              <em className="hint">pontos para vencer a partida — o padrão do Play é 4</em>
-            </label>
+              <Stepper value={target} min={1} max={21} onChange={setTarget} />
+              <em className="hint">pontos para vencer a partida — o padrão é 4</em>
+            </div>
           </div>
           <div className="toggle-card">
             <label className="row" style={{ gap: 10, cursor: 'pointer' }}>

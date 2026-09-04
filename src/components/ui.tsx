@@ -16,6 +16,56 @@ export function Avatar({ player, size = 34 }: { player?: Player; size?: number }
   return <span className="avatar" style={style}>{player ? initials(player.name) : '?'}</span>
 }
 
+/**
+ * Campo numerico com botoes - e +. No celular, digitar direto num
+ * <input type=number> controlado e uma armadilha: apagar para trocar o valor
+ * faz o campo saltar para o minimo e o proximo digito vira outro numero.
+ * Aqui o texto digitado so e aplicado quando o campo perde o foco.
+ */
+export function Stepper({
+  value,
+  min,
+  max,
+  onChange,
+  disabled,
+  vazio,
+}: {
+  value: number
+  min: number
+  max: number
+  onChange: (n: number) => void
+  disabled?: boolean
+  /** Texto no lugar do numero quando ainda nao ha o que mostrar. */
+  vazio?: string
+}) {
+  const [rascunho, setRascunho] = React.useState<string | null>(null)
+  const limitar = (n: number) => Math.min(max, Math.max(min, n))
+  const aplicar = () => {
+    const n = Number(rascunho)
+    onChange(rascunho !== null && rascunho !== '' && Number.isFinite(n) ? limitar(n) : value)
+    setRascunho(null)
+  }
+  return (
+    <div className={`stepper${disabled ? ' off' : ''}`}>
+      <button type="button" aria-label="diminuir" disabled={disabled || value <= min} onClick={() => onChange(limitar(value - 1))}>
+        −
+      </button>
+      <input
+        inputMode="numeric"
+        value={rascunho ?? (vazio && value <= 0 ? vazio : String(value))}
+        disabled={disabled}
+        onFocus={(e) => { setRascunho(String(value)); e.currentTarget.select() }}
+        onChange={(e) => setRascunho(e.target.value.replace(/\D/g, ''))}
+        onBlur={aplicar}
+        onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
+      />
+      <button type="button" aria-label="aumentar" disabled={disabled || value >= max} onClick={() => onChange(limitar(value + 1))}>
+        +
+      </button>
+    </div>
+  )
+}
+
 export function Empty({ icon = '🎾', children }: { icon?: string; children: React.ReactNode }) {
   return (
     <div className="empty">

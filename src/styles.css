@@ -543,3 +543,41 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   padding: 10px;
   background: #fbf8f4;
 }
+
+/* campo numérico com − e + (bem melhor que digitar no celular) */
+.stepper {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fbf8f4;
+  overflow: hidden;
+}
+.stepper button {
+  flex: none;
+  width: 42px;
+  border: 0;
+  background: #f1ebe3;
+  color: var(--navy);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+.stepper button:active:not(:disabled) { background: var(--pink); color: #fff; }
+.stepper button:disabled { opacity: .3; cursor: not-allowed; }
+.stepper input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: none;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 11px 2px;
+  outline: none;
+}
+.stepper.off { opacity: .6; }
+.stepper.off button { background: #ece5dc; }
+.hint.aviso { color: var(--orange); font-weight: 700; }
