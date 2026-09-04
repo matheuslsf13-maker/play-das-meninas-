@@ -14,7 +14,64 @@
     <meta name="description" content="Duplas equilibradas, placares e ranking do Play de Sexta." />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Fica visivel ate o app assumir a tela. Se o JavaScript nao carregar
+           (versao velha em cache, rede ruim, navegador antigo), a pessoa ve
+           esta tela em vez de uma pagina em branco. -->
+      <div id="boot">
+        <div class="boot-card">
+          <div class="boot-logo">🏐</div>
+          <h1>Play de Sexta</h1>
+          <p id="boot-msg">Carregando…</p>
+          <div id="boot-acoes" hidden>
+            <button onclick="location.reload()">Tentar de novo</button>
+            <button id="boot-limpar" class="alt">Limpar e recarregar</button>
+            <p class="boot-dica">
+              Se continuar assim, feche o app e abra de novo, ou acesse pelo navegador.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <style>
+      #boot { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+        font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; background: #fdf6ec; }
+      .boot-card { text-align: center; max-width: 340px; }
+      .boot-logo { font-size: 54px; }
+      #boot h1 { font-size: 22px; margin: 6px 0 4px; color: #141a3c; }
+      #boot p { color: #7b7790; font-size: 14px; margin: 0; }
+      #boot-acoes { margin-top: 18px; display: flex; flex-direction: column; gap: 8px; }
+      #boot button { border: 0; border-radius: 12px; padding: 13px 16px; font-size: 15px;
+        font-weight: 700; background: #ef4b7d; color: #fff; cursor: pointer; }
+      #boot button.alt { background: #f1ece5; color: #141a3c; }
+      .boot-dica { font-size: 12px; margin-top: 6px !important; }
+    </style>
+    <script>
+      // Sem app na tela depois de 8s, oferece as saidas.
+      window.__bootTimer = setTimeout(function () {
+        var m = document.getElementById('boot-msg')
+        var a = document.getElementById('boot-acoes')
+        if (m && a) {
+          m.textContent = 'O app está demorando para abrir.'
+          a.hidden = false
+        }
+      }, 8000)
+      document.addEventListener('click', function (e) {
+        if (!e.target || e.target.id !== 'boot-limpar') return
+        var pronto = function () { location.reload() }
+        var tarefas = []
+        if ('serviceWorker' in navigator) {
+          tarefas.push(navigator.serviceWorker.getRegistrations()
+            .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister() })) }))
+        }
+        if (window.caches) {
+          tarefas.push(caches.keys().then(function (ks) {
+            return Promise.all(ks.map(function (k) { return caches.delete(k) }))
+          }))
+        }
+        Promise.all(tarefas).then(pronto, pronto)
+      })
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

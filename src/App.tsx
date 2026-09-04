@@ -104,6 +104,27 @@ export default function App() {
         </main>
       )}
 
+      <p className="versao">
+        versão {__VERSAO__}
+        {' · '}
+        <button
+          className="linkish"
+          onClick={async () => {
+            if ('serviceWorker' in navigator) {
+              const rs = await navigator.serviceWorker.getRegistrations()
+              await Promise.all(rs.map((r) => r.unregister()))
+            }
+            if (window.caches) {
+              const ks = await caches.keys()
+              await Promise.all(ks.map((k) => caches.delete(k)))
+            }
+            location.reload()
+          }}
+        >
+          forçar atualização
+        </button>
+      </p>
+
       <nav className="tabbar">
         {TABS.map((t) => (
           <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>

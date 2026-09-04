@@ -231,7 +231,7 @@ function NewPlay({
                 {selected.length < 4
                   ? 'cada quadra comporta 4 meninas por vez'
                   : effCourts < courts
-                    ? `com ${selected.length} jogadoras cabem ${maxCourts} quadra(s); vou usar ${effCourts}`
+                    ? `só dá para usar ${effCourts}`
                     : 'quadras disponíveis hoje'}
               </em>
             </div>
@@ -286,6 +286,20 @@ function NewPlay({
             )}{' '}
             Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos.
           </p>
+
+          {selected.length >= 4 && effCourts < courts && (
+            <div className="banner err" style={{ margin: '10px 0 0' }}>
+              🏐 <strong>Não dá para usar {courts} quadras com {selected.length} jogadoras.</strong>{' '}
+              Cada quadra ocupa 4 meninas ao mesmo tempo, então {courts} quadras precisam de{' '}
+              <strong>{courts * 4} jogadoras</strong> na mesma rodada —{' '}
+              {courts * 4 - selected.length === 1
+                ? 'falta 1 jogadora'
+                : `faltam ${courts * 4 - selected.length} jogadoras`}.
+              <br />
+              Vou montar o play com <strong>{effCourts} quadra(s)</strong>
+              {restPerRound > 0 && <>, revezando quem folga a cada rodada</>}.
+            </div>
+          )}
 
           {rodizio && effRounds > 12 && (
             <div className="banner warn" style={{ margin: '10px 0 0' }}>

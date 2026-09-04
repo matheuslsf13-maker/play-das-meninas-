@@ -710,3 +710,12 @@ textarea.input { line-height: 1.45; }
 }
 .prox-info { display: block; font-weight: 700; font-size: 14px; color: var(--navy); }
 .prox-acao { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* rodapé discreto com a versão, para dar suporte a quem travar */
+.versao {
+  text-align: center;
+  font-size: 10.5px;
+  color: #b3aec2;
+  margin: 18px 0 4px;
+}
+.versao .linkish { font-size: 10.5px; color: #b3aec2; text-transform: none; letter-spacing: 0; text-decoration: underline; }

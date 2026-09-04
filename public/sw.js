@@ -1,7 +1,10 @@
 /* Service worker simples: guarda a "casca" do app para abrir sem sinal.
    Os dados vem do Supabase e nunca sao cacheados aqui -- quem cuida do
    offline dos dados e o cache/fila em localStorage. */
-const CACHE = 'play-meninas-v1'
+// a versao vem da URL de registro (sw.js?v=...), entao cada publicacao usa um
+// cache novo e os arquivos da versao anterior sao apagados
+const VERSAO = new URL(self.location.href).searchParams.get('v') || 'dev'
+const CACHE = 'play-sexta-' + VERSAO
 
 self.addEventListener('install', (e) => {
   self.skipWaiting()
