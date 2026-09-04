@@ -26,8 +26,27 @@ const GOLD = '#f5c518'
 const SILVER = '#c9cede'
 const BRONZE = '#e0a06a'
 
+/** Arte do fechamento do dia: podio da sexta e o resto da classificacao. */
+export async function buildDayPoster(
+  data: string,
+  rows: PosterRow[],
+  logoUrl?: string,
+): Promise<Blob> {
+  return desenhar(`SEXTA ${data}`, 'RANKING DO DIA', rows, logoUrl)
+}
+
+/** Arte do fechamento do mes. */
 export async function buildMonthPoster(
   mes: string,
+  rows: PosterRow[],
+  logoUrl?: string,
+): Promise<Blob> {
+  return desenhar(`RANKING DE ${mes}`, null, rows, logoUrl)
+}
+
+async function desenhar(
+  faixaTexto: string,
+  chapeu: string | null,
   rows: PosterRow[],
   logoUrl?: string,
 ): Promise<Blob> {
@@ -43,7 +62,7 @@ export async function buildMonthPoster(
   ])
 
   fundo(c)
-  cabecalho(c, mes, logo)
+  cabecalho(c, faixaTexto, chapeu, logo)
   podio(c, rows, fotos)
   demais(c, rows)
   rodape(c)
@@ -76,20 +95,37 @@ function fundo(c: CanvasRenderingContext2D) {
   c.restore()
 }
 
-function cabecalho(c: CanvasRenderingContext2D, mes: string, logo: HTMLImageElement | null) {
+function cabecalho(
+  c: CanvasRenderingContext2D,
+  faixaTexto: string,
+  chapeu: string | null,
+  logo: HTMLImageElement | null,
+) {
   c.textAlign = 'center'
+
+  const escreverFaixa = (y: number) => {
+    c.font = '800 38px system-ui, Segoe UI, Arial, sans-serif'
+    c.letterSpacing = '2px'
+    const larg = Math.min(W - 90, c.measureText(faixaTexto.toUpperCase()).width + 90)
+    c.fillStyle = PINK
+    faixa(c, W / 2 - larg / 2, y, larg, 76, 38)
+    c.fillStyle = '#fff'
+    c.fillText(faixaTexto.toUpperCase(), W / 2, y + 51)
+    c.letterSpacing = '0px'
+    if (chapeu) {
+      c.font = '800 26px system-ui, Segoe UI, Arial, sans-serif'
+      c.fillStyle = 'rgba(255,255,255,.6)'
+      c.letterSpacing = '5px'
+      c.fillText(chapeu.toUpperCase(), W / 2, y - 16)
+      c.letterSpacing = '0px'
+    }
+  }
 
   if (logo) {
     // com o logo, ele fala por si: o nome do camp sai do texto
-    const lado = 210
-    c.drawImage(logo, W / 2 - lado / 2, 26, lado, lado)
-    c.fillStyle = PINK
-    faixa(c, W / 2 - 330, 250, 660, 76, 38)
-    c.fillStyle = '#fff'
-    c.font = '800 38px system-ui, Segoe UI, Arial, sans-serif'
-    c.letterSpacing = '2px'
-    c.fillText(`RANKING DE ${mes.toUpperCase()}`, W / 2, 301)
-    c.letterSpacing = '0px'
+    const lado = 232
+    c.drawImage(logo, W / 2 - lado / 2, 10, lado, lado)
+    escreverFaixa(chapeu ? 280 : 258)
     return
   }
 
@@ -111,22 +147,16 @@ function cabecalho(c: CanvasRenderingContext2D, mes: string, logo: HTMLImageElem
   c.textAlign = 'center'
 
   // faixa do mes
-  c.fillStyle = PINK
-  faixa(c, W / 2 - 330, 208, 660, 76, 38)
-  c.fillStyle = '#fff'
-  c.font = '800 38px system-ui, Segoe UI, Arial, sans-serif'
-  c.letterSpacing = '2px'
-  c.fillText(`RANKING DE ${mes.toUpperCase()}`, W / 2, 259)
-  c.letterSpacing = '0px'
+  escreverFaixa(208)
 }
 
 function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImageElement | null)[]) {
   const bases = [
-    { i: 1, x: 175, alturaBarra: 205, raio: 86, cor: SILVER, rotulo: '2º' },
-    { i: 0, x: W / 2, alturaBarra: 265, raio: 106, cor: GOLD, rotulo: '1º' },
-    { i: 2, x: 905, alturaBarra: 178, raio: 86, cor: BRONZE, rotulo: '3º' },
+    { i: 1, x: 175, alturaBarra: 195, raio: 84, cor: SILVER, rotulo: '2º' },
+    { i: 0, x: W / 2, alturaBarra: 250, raio: 104, cor: GOLD, rotulo: '1º' },
+    { i: 2, x: 905, alturaBarra: 168, raio: 84, cor: BRONZE, rotulo: '3º' },
   ]
-  const chao = 952
+  const chao = 980
 
   for (const b of bases) {
     const r = rows[b.i]
@@ -136,7 +166,7 @@ function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImage
 
     if (b.i === 0) {
       if (r.statusTitle) chamas(c, b.x, cy, b.raio) // usou o status: pega fogo
-      coroa(c, b.x, cy - b.raio - 56, 104)
+      coroa(c, b.x, cy - b.raio - 50, 112)
     }
     retrato(c, fotos[b.i], r.name, b.x, cy, b.raio, b.cor)
 
@@ -170,7 +200,9 @@ function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImage
 /** Faixa do status usado pela campea do mes, sob o podio. */
 function faixaDoTitulo(c: CanvasRenderingContext2D, r: PosterRow, chao: number) {
   if (!r.statusTitle) return
-  const texto = `${r.statusEmoji ?? '🔥'} ${r.statusTitle.toUpperCase()}`
+  const texto =
+    `${r.statusEmoji ?? '🔥'} ${r.statusTitle.toUpperCase()}` +
+    (r.statusPoints ? `  ·  +${r.statusPoints} PTS` : '')
   c.textAlign = 'center'
   c.font = '900 34px system-ui, Segoe UI, Arial, sans-serif'
   const larg = Math.min(W - 120, c.measureText(texto).width + 120)
@@ -183,11 +215,6 @@ function faixaDoTitulo(c: CanvasRenderingContext2D, r: PosterRow, chao: number) 
   faixa(c, W / 2 - larg / 2, y, larg, 62, 31)
   c.fillStyle = '#fff'
   c.fillText(texto, W / 2, y + 43)
-  if (r.statusPoints) {
-    c.font = '700 24px system-ui, Segoe UI, Arial, sans-serif'
-    c.fillStyle = 'rgba(255,255,255,.85)'
-    c.fillText(`status usado no fechamento · +${r.statusPoints} pontos`, W / 2, y + 90)
-  }
 }
 
 /**
@@ -237,9 +264,9 @@ function chamas(c: CanvasRenderingContext2D, cx: number, cy: number, raio: numbe
 
 function demais(c: CanvasRenderingContext2D, rows: PosterRow[]) {
   const comTitulo = Boolean(rows[0]?.statusTitle)
-  const resto = rows.slice(3, comTitulo ? 6 : 8)
+  const resto = rows.slice(3, comTitulo ? 7 : 8)
   if (resto.length === 0) return
-  let y = comTitulo ? 1120 : 1024
+  let y = comTitulo ? 1090 : 1030
   c.textAlign = 'left'
   resto.forEach((r, i) => {
     c.fillStyle = 'rgba(255,255,255,.08)'
@@ -274,9 +301,12 @@ function coroa(c: CanvasRenderingContext2D, cx: number, cy: number, largura: num
   const x = cx - largura / 2
   const y = cy - h / 2
   c.save()
+  // sombra escura para a coroa nao sumir quando ha chamas atras
+  c.shadowColor = 'rgba(20,10,40,.55)'
+  c.shadowBlur = 14
   c.fillStyle = GOLD
-  c.strokeStyle = '#c99400'
-  c.lineWidth = 3
+  c.strokeStyle = '#8a5b00'
+  c.lineWidth = 4
   c.beginPath()
   c.moveTo(x, y + h)
   c.lineTo(x, y + h * 0.28)
