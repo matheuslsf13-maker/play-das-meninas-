@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Avatar, Empty, Modal, StatBox, shareOrCopy } from '../components/ui'
 import { generateSchedule, matchesPerPlayer, planToMatches, type RoundPlan } from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
 import { buildHistory, computeStats, playedMatches, ratings, rankPlayers } from '../lib/stats'
 import { computeStreaks, streakLevel } from '../lib/streaks'
+import { useWakeLock } from '../lib/wakelock'
 import { useStore } from '../lib/store'
 import { dateLabel, todayISO, uid, type Match, type PlaySession } from '../lib/types'
 import { RankTable } from './Ranking'
@@ -300,9 +301,11 @@ function PlayDetail({
   )
   const awardLevel = award ? streakLevel(award.streak) : null
 
-  async function setScore(m: Match, a: number | null, b: number | null) {
-    await saveMatches([{ ...m, score_a: a, score_b: b }])
+  function setScore(m: Match, a: number | null, b: number | null) {
+    saveMatches([{ ...m, score_a: a, score_b: b }])
   }
+
+  useWakeLock(!finished)
 
   async function regenerate() {
     if (doneCount > 0 && !confirm('Já existem placares lançados. Gerar novas duplas apaga todos os resultados deste play. Continuar?')) return
@@ -358,24 +361,16 @@ function PlayDetail({
         </div>
       </div>
 
-      {rounds.map(([round, ms]) => {
-        const byes = session.player_ids.filter((p) => !ms.some((m) => [...m.team_a, ...m.team_b].includes(p)))
-        return (
-          <div className="card" key={round}>
-            <div className="section-title">🔄 Rodada {round}</div>
-            {ms.map((m) => (
-              <MatchCard key={m.id} match={m} target={session.target} editable={canEdit && !finished} onScore={setScore} />
-            ))}
-            {byes.length > 0 && (
-              <div className="tiny muted">Folga nesta rodada: {byes.map(nameOf).join(', ')}</div>
-            )}
-          </div>
-        )
-      })}
+      <RoundBoard
+        rounds={rounds}
+        session={session}
+        editable={canEdit && !finished}
+        onScore={setScore}
+      />
 
       {canEdit && !finished && (
         <button className="btn teal block" onClick={() => void finish()}>
-          ✅ Finalizar o dia e somar os pontos
+          ✅ Finalizar o play e somar os pontos
         </button>
       )}
 
@@ -425,6 +420,78 @@ function PlayDetail({
   )
 }
 
+function RoundBoard({
+  rounds,
+  session,
+  editable,
+  onScore,
+}: {
+  rounds: [number, Match[]][]
+  session: PlaySession
+  editable: boolean
+  onScore: (m: Match, a: number | null, b: number | null) => void
+}) {
+  const { nameOf } = useStore()
+  // primeira rodada que ainda falta placar; se acabou tudo, fica na ultima
+  const firstOpen =
+    rounds.find(([, ms]) => ms.some((m) => !isPlayed(m)))?.[0] ?? rounds[rounds.length - 1]?.[0] ?? 1
+  const [round, setRound] = useState(firstOpen)
+  const [all, setAll] = useState(false)
+
+  // ao abrir/atualizar, pula para a primeira rodada que ainda falta placar
+  useEffect(() => setRound(firstOpen), [firstOpen])
+
+  if (rounds.length === 0) return null
+  const idx = rounds.findIndex(([r]) => r === round)
+  const shown = all ? rounds : rounds.slice(Math.max(idx, 0), Math.max(idx, 0) + 1)
+
+  return (
+    <>
+      <div className="card round-nav">
+        <div className="row spread" style={{ marginBottom: 8 }}>
+          <strong style={{ fontSize: 15 }}>{all ? 'Todas as rodadas' : `Rodada ${round} de ${rounds.length}`}</strong>
+          <button className="btn ghost sm" onClick={() => setAll((v) => !v)}>
+            {all ? 'Ver uma por vez' : 'Ver todas'}
+          </button>
+        </div>
+        {!all && (
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn ghost step" disabled={idx <= 0} onClick={() => setRound(rounds[idx - 1][0])}>‹</button>
+            <div className="chips-scroll grow">
+              {rounds.map(([r, ms]) => {
+                const done = ms.every(isPlayed)
+                return (
+                  <button
+                    key={r}
+                    className={`round-chip${r === round ? ' on' : ''}${done ? ' done' : ''}`}
+                    onClick={() => setRound(r)}
+                  >
+                    {done ? '✓' : r}
+                  </button>
+                )
+              })}
+            </div>
+            <button className="btn ghost step" disabled={idx >= rounds.length - 1} onClick={() => setRound(rounds[idx + 1][0])}>›</button>
+          </div>
+        )}
+      </div>
+
+      {shown.map(([r, ms]) => {
+        const byes = session.player_ids.filter((p) => !ms.some((m) => [...m.team_a, ...m.team_b].includes(p)))
+        return (
+          <div className="card" key={r}>
+            {all && <div className="section-title">🔄 Rodada {r}</div>}
+            {ms.map((m) => (
+              <MatchCard key={m.id} match={m} target={session.target} editable={editable} onScore={onScore} />
+            ))}
+            {byes.length > 0 && <div className="tiny muted">Folga nesta rodada: {byes.map(nameOf).join(', ')}</div>}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 function MatchCard({
   match,
   target,
@@ -434,49 +501,106 @@ function MatchCard({
   match: Match
   target: number
   editable: boolean
-  onScore: (m: Match, a: number | null, b: number | null) => Promise<void>
+  onScore: (m: Match, a: number | null, b: number | null) => void
 }) {
   const { nameOf, playerById } = useStore()
+  const [winner, setWinner] = useState<'a' | 'b' | null>(null)
   const played = isPlayed(match)
   const [pa, pb] = played ? matchPoints(match.score_a as number, match.score_b as number) : [0, 0]
   const aWin = played && (match.score_a as number) > (match.score_b as number)
-  const options = Array.from({ length: target + 1 }, (_, i) => i)
 
-  const teamRow = (ids: [string, string], score: number | null, win: boolean, pts: number, onChange: (v: number | null) => void) => (
-    <div className={`team ${played ? (win ? 'win' : 'lose') : ''}`}>
+  const duo = (ids: [string, string]) => (
+    <>
       <Avatar player={playerById(ids[0])} size={26} />
       <Avatar player={playerById(ids[1])} size={26} />
-      <div className="names ellipsis">
+      <span className="names ellipsis">
         {nameOf(ids[0])} <span className="muted">+</span> {nameOf(ids[1])}
-        {played && pts > 0 && <span className="tiny" style={{ color: 'var(--pink)', fontWeight: 800 }}> +{pts}</span>}
-      </div>
-      {editable ? (
-        <select
-          className="score-input"
-          value={score === null ? '' : String(score)}
-          onChange={(e) => onChange(e.target.value === '' ? null : Number(e.target.value))}
-        >
-          <option value="">–</option>
-          {options.map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      ) : (
-        <span className="score-input" style={{ display: 'inline-block' }}>{score ?? '–'}</span>
-      )}
-    </div>
+      </span>
+    </>
   )
 
-  return (
-    <div className={`match ${played ? 'done' : ''}`}>
-      <div className="match-head">
-        <span>Quadra {match.court}</span>
-        <span>{played ? `${match.score_a} x ${match.score_b}` : 'sem placar'}</span>
+  // ---- ja tem placar: mostra o resultado ----
+  if (played) {
+    return (
+      <div className="match done">
+        <div className="match-head">
+          <span>Quadra {match.court}</span>
+          <span>{editable ? '' : 'placar'}</span>
+        </div>
+        <div className={`team ${aWin ? 'win' : 'lose'}`}>
+          {duo(match.team_a)}
+          {pa > 0 && <span className="pts-tag">+{pa}</span>}
+          <span className="score-box">{match.score_a}</span>
+        </div>
+        <div className={`team ${aWin ? 'lose' : 'win'}`}>
+          {duo(match.team_b)}
+          {pb > 0 && <span className="pts-tag">+{pb}</span>}
+          <span className="score-box">{match.score_b}</span>
+        </div>
+        {editable && (
+          <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => { setWinner(null); onScore(match, null, null) }}>
+            ✏️ Trocar placar
+          </button>
+        )}
       </div>
-      {teamRow(match.team_a, match.score_a, aWin, pa, (v) => void onScore(match, v, match.score_b))}
+    )
+  }
+
+  // ---- so leitura e ainda sem placar ----
+  if (!editable) {
+    return (
+      <div className="match">
+        <div className="match-head"><span>Quadra {match.court}</span><span>sem placar</span></div>
+        <div className="team">{duo(match.team_a)}</div>
+        <div className="vs">X</div>
+        <div className="team">{duo(match.team_b)}</div>
+      </div>
+    )
+  }
+
+  // ---- passo 2: quantos games a perdedora fez ----
+  if (winner) {
+    const loserIds = winner === 'a' ? match.team_b : match.team_a
+    return (
+      <div className="match live">
+        <div className="match-head">
+          <span>Quadra {match.court}</span>
+          <button className="linkish" onClick={() => setWinner(null)}>‹ voltar</button>
+        </div>
+        <div className="team win">{duo(winner === 'a' ? match.team_a : match.team_b)}<span className="score-box">{target}</span></div>
+        <div className="ask">Quantos games <strong>{nameOf(loserIds[0])} + {nameOf(loserIds[1])}</strong> fez?</div>
+        <div className="games-row">
+          {Array.from({ length: target }, (_, n) => (
+            <button
+              key={n}
+              className="game-btn"
+              onClick={() => {
+                setWinner(null)
+                if (winner === 'a') onScore(match, target, n)
+                else onScore(match, n, target)
+              }}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // ---- passo 1: quem venceu ----
+  return (
+    <div className="match live">
+      <div className="match-head"><span>Quadra {match.court}</span><span>quem venceu?</span></div>
+      <button className="pick-team" onClick={() => setWinner('a')}>
+        {duo(match.team_a)}
+        <span className="pick-tag">venceu</span>
+      </button>
       <div className="vs">X</div>
-      {teamRow(match.team_b, match.score_b, played && !aWin, pb, (v) => void onScore(match, match.score_a, v))}
-      {match.score_a !== null && match.score_b !== null && match.score_a === match.score_b && (
-        <div className="tiny" style={{ color: '#c02626', marginTop: 6 }}>Não pode empatar — ajuste o placar.</div>
-      )}
+      <button className="pick-team" onClick={() => setWinner('b')}>
+        {duo(match.team_b)}
+        <span className="pick-tag">venceu</span>
+      </button>
     </div>
   )
 }

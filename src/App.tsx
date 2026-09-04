@@ -16,7 +16,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 ]
 
 export default function App() {
-  const { loading, error, online, canEdit, userEmail, signIn, signOut } = useStore()
+  const { loading, error, online, canEdit, userEmail, signIn, signOut, sync, pendingCount } = useStore()
   const [tab, setTab] = useState<Tab>('ranking')
   const [login, setLogin] = useState(false)
   const { msg, show } = useToast()
@@ -29,8 +29,17 @@ export default function App() {
             <h1>Play <span>das Meninas</span></h1>
             <div className="sub">
               <span>Super 8 · V3 Arena</span>
-              <span className={`dot ${online ? 'on' : 'off'}`} />
-              <span>{online ? (userEmail ? `admin: ${userEmail}` : 'só leitura') : 'modo local'}</span>
+              {online && canEdit ? (
+                <span className={`sync ${sync}`}>
+                  <span className="dot" />
+                  {sync === 'saved' ? 'tudo salvo' : sync === 'saving' ? 'salvando…' : `${pendingCount} para enviar`}
+                </span>
+              ) : (
+                <>
+                  <span className={`dot ${online ? 'on' : 'off'}`} />
+                  <span>{online ? 'só leitura' : 'modo local'}</span>
+                </>
+              )}
             </div>
           </div>
           {online && (
@@ -41,7 +50,14 @@ export default function App() {
         </div>
       </header>
 
-      {error && <div className="banner err">{error}</div>}
+      {pendingCount > 0 ? (
+        <div className="banner warn">
+          📶 Sem conexão no momento — <strong>{pendingCount} alteração(ões)</strong> guardada(s) no celular.
+          Pode continuar lançando: assim que o sinal voltar eu envio tudo sozinho.
+        </div>
+      ) : (
+        error && <div className="banner err">{error}</div>
+      )}
       {online && !canEdit && (
         <div className="banner warn">
           Você está vendo o ranking em modo leitura. Quem organiza o play entra em <strong>Entrar</strong> para lançar os resultados.

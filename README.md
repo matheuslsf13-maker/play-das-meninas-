@@ -85,6 +85,24 @@ o site a cada push na `main`.
 Também funciona direto na Vercel/Netlify: build `npm run build`, pasta `dist`,
 e as mesmas duas variáveis de ambiente.
 
+## No celular da organizadora
+
+O app foi feito para ser usado com uma mão, na beira da quadra:
+
+- **Placar em 2 toques** — toca na dupla que venceu, toca em quantos games a
+  adversária fez. Pronto, partida lançada. Para corrigir, *Trocar placar*.
+- **Uma rodada por vez** — nada de rolar 24 partidas procurando a atual. O app
+  já abre na primeira rodada que falta placar, com a barrinha de rodadas
+  (✓ marca as que terminaram) e setas para navegar. *Ver todas* mostra tudo.
+- **Salva na hora** — o placar aparece na tela imediatamente e vai para o banco
+  em segundo plano. O topo mostra *tudo salvo* / *salvando…* / *N para enviar*.
+- **Aguenta sinal ruim** — sem internet, os lançamentos ficam guardados no
+  celular (sobrevivem até a fechar o app) e sobem sozinhos quando o sinal volta.
+  O app também abre offline mostrando o último estado conhecido.
+- **Tela não apaga** enquanto um play está aberto.
+- **Dá para instalar** como aplicativo: no celular, abrir o link e escolher
+  *Adicionar à tela de início* (Android: menu ⋮ → *Instalar app*).
+
 ## Como usar no dia do play
 
 1. **Meninas** — cadastre as jogadoras (e as fotos).

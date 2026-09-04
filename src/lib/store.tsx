@@ -1,10 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { localRepo } from '../data/localRepo'
+import { loadCache, loadQueue, saveCache, saveQueue, type WriteOp } from '../data/queue'
 import type { Repo } from '../data/repo'
 import { supabaseRepo } from '../data/supabaseRepo'
 import { hasSupabase, supabase } from './supabase'
 import type { AppData, Match, PlaySession, Player } from './types'
-import { emptyData } from './types'
+import { emptyData, uid } from './types'
+
+export type SyncState = 'saved' | 'saving' | 'pending'
 
 type Ctx = {
   data: AppData
@@ -13,14 +16,16 @@ type Ctx = {
   online: boolean
   canEdit: boolean
   userEmail: string | null
+  sync: SyncState
+  pendingCount: number
   reload: () => Promise<void>
   repo: Repo
-  savePlayer: (p: Player) => Promise<void>
-  deletePlayer: (id: string) => Promise<void>
-  saveSession: (s: PlaySession) => Promise<void>
-  deleteSession: (id: string) => Promise<void>
-  saveMatches: (ms: Match[]) => Promise<void>
-  replaceSessionMatches: (sessionId: string, ms: Match[]) => Promise<void>
+  savePlayer: (p: Player) => void
+  deletePlayer: (id: string) => void
+  saveSession: (s: PlaySession) => void
+  deleteSession: (id: string) => void
+  saveMatches: (ms: Match[]) => void
+  replaceSessionMatches: (sessionId: string, ms: Match[]) => void
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   playerById: (id: string) => Player | undefined
@@ -29,19 +34,71 @@ type Ctx = {
 
 const StoreContext = createContext<Ctx | null>(null)
 
+/** Aplica a operacao no estado local, para a tela responder na hora. */
+function applyLocally(d: AppData, op: WriteOp): AppData {
+  switch (op.type) {
+    case 'savePlayer':
+      return { ...d, players: upsert(d.players, op.player) }
+    case 'deletePlayer':
+      return { ...d, players: d.players.filter((p) => p.id !== op.playerId) }
+    case 'saveSession':
+      return { ...d, sessions: upsert(d.sessions, op.session) }
+    case 'deleteSession':
+      return {
+        ...d,
+        sessions: d.sessions.filter((s) => s.id !== op.sessionId),
+        matches: d.matches.filter((m) => m.session_id !== op.sessionId),
+      }
+    case 'saveMatches': {
+      let matches = d.matches
+      for (const m of op.matches) matches = upsert(matches, m)
+      return { ...d, matches }
+    }
+    case 'replaceSessionMatches':
+      return {
+        ...d,
+        matches: [...d.matches.filter((m) => m.session_id !== op.sessionId), ...op.matches],
+      }
+  }
+}
+
+function upsert<T extends { id: string }>(list: T[], item: T): T[] {
+  const i = list.findIndex((x) => x.id === item.id)
+  if (i < 0) return [...list, item]
+  const copy = list.slice()
+  copy[i] = item
+  return copy
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const repo = hasSupabase ? supabaseRepo : localRepo
-  const [data, setData] = useState<AppData>(emptyData)
+  // no modo online o app abre com o ultimo estado conhecido, mesmo sem sinal
+  const [data, setData] = useState<AppData>(() => (hasSupabase ? loadCache<AppData>() : null) ?? emptyData())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [userEmail, setUserEmail] = useState<string | null>(null)
+  const [queue, setQueue] = useState<WriteOp[]>(() => (hasSupabase ? loadQueue() : []))
+  const [syncing, setSyncing] = useState(false)
+
+  const queueRef = useRef(queue)
+  const draining = useRef(false)
+  const retryTimer = useRef<number | null>(null)
   const reloadTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    queueRef.current = queue
+    if (repo.kind === 'supabase') saveQueue(queue)
+  }, [queue, repo.kind])
 
   const reload = useCallback(async () => {
     try {
-      setError(null)
-      const d = await repo.load()
+      const loaded = await repo.load()
+      // reaplica por cima o que ainda nao subiu, senao a tela "perde" o que
+      // foi lancado sem sinal ate a fila terminar de enviar
+      const d = queueRef.current.reduce(applyLocally, loaded)
       setData(d)
+      if (repo.kind === 'supabase') saveCache(d)
+      setError(null)
     } catch (e) {
       setError(messageOf(e))
     } finally {
@@ -49,41 +106,82 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   }, [repo])
 
+  /** Envia a fila de escritas, uma por vez, e tenta de novo se cair a rede. */
+  const drain = useCallback(async () => {
+    if (draining.current) return
+    draining.current = true
+    try {
+      while (queueRef.current.length > 0) {
+        const op = queueRef.current[0]
+        setSyncing(true)
+        try {
+          await runOp(repo, op)
+        } catch (e) {
+          setError(messageOf(e))
+          if (retryTimer.current) window.clearTimeout(retryTimer.current)
+          retryTimer.current = window.setTimeout(() => void drain(), 5000)
+          return
+        }
+        queueRef.current = queueRef.current.filter((x) => x.id !== op.id)
+        setQueue(queueRef.current)
+        setError(null)
+      }
+    } finally {
+      draining.current = false
+      setSyncing(false)
+    }
+  }, [repo])
+
+  const push = useCallback(
+    (op: WriteOp) => {
+      setData((d) => {
+        const next = applyLocally(d, op)
+        if (repo.kind === 'supabase') saveCache(next)
+        return next
+      })
+      queueRef.current = [...queueRef.current, op]
+      setQueue(queueRef.current)
+      void drain()
+    },
+    [drain, repo.kind],
+  )
+
   useEffect(() => {
-    void reload()
-  }, [reload])
+    void reload().then(() => void drain())
+  }, [reload, drain])
+
+  // volta o sinal -> tenta enviar o que ficou pendente
+  useEffect(() => {
+    const onOnline = () => void drain()
+    window.addEventListener('online', onOnline)
+    return () => window.removeEventListener('online', onOnline)
+  }, [drain])
 
   useEffect(() => {
     if (!supabase) return
     void supabase.auth.getSession().then(({ data: s }) => setUserEmail(s.session?.user.email ?? null))
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUserEmail(s?.user.email ?? null))
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
+      setUserEmail(s?.user.email ?? null)
+      void drain()
+    })
     return () => sub.subscription.unsubscribe()
-  }, [])
+  }, [drain])
 
+  // mudancas feitas por outra pessoa; nunca sobrescreve escrita pendente
   useEffect(() => {
     if (!repo.subscribe) return
     return repo.subscribe(() => {
+      if (queueRef.current.length > 0) return
       if (reloadTimer.current) window.clearTimeout(reloadTimer.current)
-      reloadTimer.current = window.setTimeout(() => void reload(), 400)
+      reloadTimer.current = window.setTimeout(() => {
+        if (queueRef.current.length === 0) void reload()
+      }, 600)
     })
   }, [repo, reload])
 
-  const wrap = useCallback(
-    async (fn: () => Promise<void>) => {
-      try {
-        setError(null)
-        await fn()
-        await reload()
-      } catch (e) {
-        setError(messageOf(e))
-        throw e
-      }
-    },
-    [reload],
-  )
-
   const value = useMemo<Ctx>(() => {
     const byId = new Map(data.players.map((p) => [p.id, p]))
+    const sync: SyncState = queue.length === 0 ? 'saved' : syncing ? 'saving' : 'pending'
     return {
       data,
       loading,
@@ -92,17 +190,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       online: repo.kind === 'supabase',
       canEdit: repo.kind === 'local' || userEmail !== null,
       userEmail,
+      sync,
+      pendingCount: queue.length,
       reload,
-      savePlayer: (p) => wrap(() => repo.savePlayer(p)),
-      deletePlayer: (id) => wrap(() => repo.deletePlayer(id)),
-      saveSession: (s) => wrap(() => repo.saveSession(s)),
-      deleteSession: (id) => wrap(() => repo.deleteSession(id)),
-      saveMatches: (ms) => wrap(() => repo.saveMatches(ms)),
-      replaceSessionMatches: (sessionId, ms) =>
-        wrap(async () => {
-          await repo.deleteMatchesOfSession(sessionId)
-          await repo.saveMatches(ms)
-        }),
+      savePlayer: (player) => push({ id: uid(), type: 'savePlayer', player }),
+      deletePlayer: (playerId) => push({ id: uid(), type: 'deletePlayer', playerId }),
+      saveSession: (session) => push({ id: uid(), type: 'saveSession', session }),
+      deleteSession: (sessionId) => push({ id: uid(), type: 'deleteSession', sessionId }),
+      saveMatches: (matches) => push({ id: uid(), type: 'saveMatches', matches }),
+      replaceSessionMatches: (sessionId, matches) =>
+        push({ id: uid(), type: 'replaceSessionMatches', sessionId, matches }),
       signIn: async (email, password) => {
         if (!supabase) return
         const { error: e } = await supabase.auth.signInWithPassword({ email, password })
@@ -115,9 +212,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       playerById: (id) => byId.get(id),
       nameOf: (id) => byId.get(id)?.name ?? '—',
     }
-  }, [data, loading, error, repo, userEmail, reload, wrap])
+  }, [data, loading, error, repo, userEmail, reload, push, queue.length, syncing])
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>
+}
+
+async function runOp(repo: Repo, op: WriteOp): Promise<void> {
+  switch (op.type) {
+    case 'savePlayer':
+      return repo.savePlayer(op.player)
+    case 'deletePlayer':
+      return repo.deletePlayer(op.playerId)
+    case 'saveSession':
+      return repo.saveSession(op.session)
+    case 'deleteSession':
+      return repo.deleteSession(op.sessionId)
+    case 'saveMatches':
+      return repo.saveMatches(op.matches)
+    case 'replaceSessionMatches':
+      await repo.deleteMatchesOfSession(op.sessionId)
+      return repo.saveMatches(op.matches)
+  }
 }
 
 export function useStore(): Ctx {
