@@ -32,6 +32,8 @@ export type Match = {
   team_b: [string, string]
   score_a: number | null
   score_b: number | null
+  /** Quando a partida entrou em quadra. Null = ainda nao comecou. */
+  started_at?: string | null
 }
 
 /**

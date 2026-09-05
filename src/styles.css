@@ -741,3 +741,9 @@ textarea.input { line-height: 1.45; }
   color: #8a4b06;
 }
 .match.travada-borda { border-color: var(--orange); }
+
+/* partida em quadra agora */
+.match.em-quadra {
+  border-color: var(--teal);
+  background: #f2fbfa;
+}

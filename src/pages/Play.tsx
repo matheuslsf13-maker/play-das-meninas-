@@ -434,7 +434,17 @@ function PlayDetail({
   const awardLevel = award ? streakLevel(award.streak) : null
 
   function setScore(m: Match, a: number | null, b: number | null) {
-    saveMatches([{ ...m, score_a: a, score_b: b }])
+    // lancar o placar tambem encerra a partida: a quadra fica livre de novo
+    saveMatches([{ ...m, score_a: a, score_b: b, started_at: null }])
+  }
+
+  /** Botao "partida iniciada": e a partir daqui que o app sabe quem esta em quadra. */
+  function iniciar(m: Match) {
+    saveMatches([{ ...m, started_at: new Date().toISOString() }])
+  }
+
+  function cancelarInicio(m: Match) {
+    saveMatches([{ ...m, started_at: null }])
   }
 
   useWakeLock(!finished)
@@ -575,24 +585,30 @@ function PlayDetail({
   }
 
   /**
-   * O que esta rolando agora em cada quadra: a primeira partida sem placar
-   * daquela quadra. As quadras nao terminam juntas, entao "estar em jogo" nao
-   * tem a ver com a rodada, e sim com a partida que a quadra ainda nao fechou.
+   * Quem esta em quadra AGORA: as partidas que foram marcadas como iniciadas
+   * e ainda nao tem placar. E o organizador quem diz -- botao "partida
+   * iniciada" -- entao nao ha adivinhacao por rodada ou por quadra.
    */
-  const emAndamento = useMemo(() => {
+  const emJogo = useMemo(
+    () => matches.filter((m) => !!m.started_at && !isPlayed(m)),
+    [matches],
+  )
+
+  /** A proxima partida de cada quadra (a primeira sem placar e sem inicio). */
+  const proximaDaQuadra = useMemo(() => {
     const porQuadra = new Map<number, Match>()
     for (const m of matches) {
-      if (isPlayed(m)) continue
+      if (isPlayed(m) || m.started_at) continue
       if (!porQuadra.has(m.court)) porQuadra.set(m.court, m)
     }
     return porQuadra
   }, [matches])
 
-  /** Quem esta em quadra agora, nas OUTRAS quadras. */
+  /** Quem esta jogando agora em OUTRA partida. */
   function ocupadasFora(m: Match): Set<string> {
     const fora = new Set<string>()
-    for (const [court, atual] of emAndamento) {
-      if (court === m.court) continue
+    for (const atual of emJogo) {
+      if (atual.id === m.id) continue
       for (const id of [...atual.team_a, ...atual.team_b]) fora.add(id)
     }
     return fora
@@ -600,7 +616,7 @@ function PlayDetail({
 
   /** Esta partida e a proxima a entrar na quadra dela? */
   function ehAProxima(m: Match): boolean {
-    return emAndamento.get(m.court)?.id === m.id
+    return proximaDaQuadra.get(m.court)?.id === m.id
   }
 
   /** Troca as ocupadas por quem esta livre, mantendo equilibrio e duplas novas. */
@@ -683,6 +699,8 @@ function PlayDetail({
         ehAProxima={ehAProxima}
         onLiberar={liberarQuadra}
         onTrocar={trocar}
+        onIniciar={iniciar}
+        onCancelarInicio={cancelarInicio}
       />
 
       {canEdit && !finished && (
@@ -771,6 +789,8 @@ function RoundBoard({
   ehAProxima,
   onLiberar,
   onTrocar,
+  onIniciar,
+  onCancelarInicio,
 }: {
   rounds: [number, Match[]][]
   session: PlaySession
@@ -780,6 +800,8 @@ function RoundBoard({
   ehAProxima: (m: Match) => boolean
   onLiberar: (m: Match) => void
   onTrocar: (m: Match, sai: string, entra: string) => void
+  onIniciar: (m: Match) => void
+  onCancelarInicio: (m: Match) => void
 }) {
   const { nameOf } = useStore()
   // primeira rodada que ainda falta placar; se acabou tudo, fica na ultima
@@ -843,6 +865,8 @@ function RoundBoard({
                 jogadorasDoPlay={session.player_ids}
                 onLiberar={() => onLiberar(m)}
                 onTrocar={(sai, entra) => onTrocar(m, sai, entra)}
+                onIniciar={() => onIniciar(m)}
+                onCancelarInicio={() => onCancelarInicio(m)}
               />
             ))}
             {byes.length > 0 && <div className="tiny muted">Folga nesta rodada: {byes.map(nameOf).join(', ')}</div>}
@@ -863,6 +887,8 @@ function MatchCard({
   jogadorasDoPlay,
   onLiberar,
   onTrocar,
+  onIniciar,
+  onCancelarInicio,
 }: {
   match: Match
   target: number
@@ -873,11 +899,14 @@ function MatchCard({
   jogadorasDoPlay: string[]
   onLiberar: () => void
   onTrocar: (sai: string, entra: string) => void
+  onIniciar: () => void
+  onCancelarInicio: () => void
 }) {
   const { nameOf, playerById } = useStore()
   const [winner, setWinner] = useState<'a' | 'b' | null>(null)
   const [trocando, setTrocando] = useState<string | null>(null)
   const noTime = [...match.team_a, ...match.team_b]
+  const iniciada = !!match.started_at
   const presas = proxima ? noTime.filter((id) => ocupadas.has(id)) : []
   const played = isPlayed(match)
   const [pa, pb] = played ? matchPoints(match.score_a as number, match.score_b as number) : [0, 0]
@@ -951,7 +980,10 @@ function MatchCard({
   if (!editable) {
     return (
       <div className="match">
-        <div className="match-head"><span>Quadra {match.court}</span><span>sem placar</span></div>
+        <div className="match-head">
+          <span>Quadra {match.court}</span>
+          <span>{iniciada ? '🟢 em quadra' : 'sem placar'}</span>
+        </div>
         <div className="team">{duo(match.team_a)}</div>
         <div className="vs">X</div>
         <div className="team">{duo(match.team_b)}</div>
@@ -1003,9 +1035,24 @@ function MatchCard({
 
   // ---- passo 1: quem venceu ----
   return (
-    <div className={`match live${presas.length ? ' travada-borda' : ''}`}>
-      <div className="match-head"><span>Quadra {match.court}</span><span>quem venceu?</span></div>
+    <div className={`match live${presas.length ? ' travada-borda' : ''}${iniciada ? ' em-quadra' : ''}`}>
+      <div className="match-head">
+        <span>Quadra {match.court}</span>
+        <span>{iniciada ? '🟢 em quadra' : 'quem venceu?'}</span>
+      </div>
       {avisoPresas}
+      {iniciada ? (
+        <div className="row spread" style={{ marginBottom: 8 }}>
+          <span className="tiny" style={{ fontWeight: 800, color: 'var(--teal)' }}>
+            Jogando desde {horaCurta(match.started_at as string)} — lance o placar para encerrar
+          </span>
+          <button className="linkish" onClick={onCancelarInicio}>desfazer</button>
+        </div>
+      ) : (
+        <button className="btn teal sm block" style={{ marginBottom: 8 }} onClick={onIniciar}>
+          ▶️ Partida iniciada
+        </button>
+      )}
       <button className="pick-team" onClick={() => setWinner('a')}>
         {duo(match.team_a)}
         <span className="pick-tag">venceu</span>
@@ -1018,6 +1065,12 @@ function MatchCard({
       {modalTroca}
     </div>
   )
+}
+
+function horaCurta(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
 /** Escolhe quem entra no lugar de alguem, mostrando quem esta livre. */

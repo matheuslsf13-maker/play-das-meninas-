@@ -51,7 +51,15 @@ export const supabaseRepo: Repo = {
   async saveMatches(ms: Match[]) {
     if (ms.length === 0) return
     const { error } = await client().from('matches').upsert(ms)
-    if (error) throw error
+    if (!error) return
+    // banco ainda sem a coluna started_at (script 04 nao rodou): salva o resto
+    if (/started_at/.test(error.message ?? '')) {
+      const semInicio = ms.map(({ started_at: _ignora, ...resto }) => resto)
+      const retry = await client().from('matches').upsert(semInicio)
+      if (retry.error) throw retry.error
+      return
+    }
+    throw error
   },
   async deleteMatchesOfSession(sessionId: string) {
     const { error } = await client().from('matches').delete().eq('session_id', sessionId)
