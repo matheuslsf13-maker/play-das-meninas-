@@ -71,11 +71,17 @@ export default function Stats() {
         <label className="field" style={{ marginTop: 12 }}>
           <span>Período</span>
           <select className="select" value={period} onChange={(e) => setPeriod(e.target.value)}>
-            <option value="all">Desde o início</option>
-            {months.map((m) => (
-              <option key={m} value={m}>{monthLabel(m)}</option>
+            <option value="all">🏅 Histórico completo</option>
+            {months.map((m, i) => (
+              <option key={m} value={m}>
+                {i === 0 ? `${monthLabel(m)} (mês atual)` : monthLabel(m)}
+              </option>
             ))}
           </select>
+          <em className="hint">
+            O ranking zera todo mês, mas as partidas ficam guardadas para sempre — é o histórico
+            completo que o app usa para montar as duplas equilibradas.
+          </em>
         </label>
       </div>
 

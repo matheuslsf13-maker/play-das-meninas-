@@ -48,24 +48,42 @@ export function dayRankingText(
   return `${head}\n${body}${extra}`
 }
 
+/**
+ * A ordem das partidas para mandar no grupo. Nao ha rodadas: a lista e a fila,
+ * e cada partida entra na quadra que vagar primeiro.
+ */
 export function scheduleText(
   date: string,
   title: string,
-  rounds: { round: number; matches: { court: number; team_a: [string, string]; team_b: [string, string] }[]; byes: string[] }[],
+  courts: number,
+  partidas: { round: number; team_a: [string, string]; team_b: [string, string] }[],
   nameOf: (id: string) => string,
+  grupos?: string[][] | null,
 ): string {
-  const head = `🎾 ${title.toUpperCase()} — ${dateLabel(date)}\nDuplas de cada rodada:\n`
-  const body = rounds
-    .map((r) => {
-      const games = r.matches
-        .map(
-          (m) =>
-            `  Quadra ${m.court}: ${nameOf(m.team_a[0])} + ${nameOf(m.team_a[1])}  x  ${nameOf(m.team_b[0])} + ${nameOf(m.team_b[1])}`,
-        )
-        .join('\n')
-      const bye = r.byes.length ? `\n  Folga: ${r.byes.map(nameOf).join(', ')}` : ''
-      return `\n*Rodada ${r.round}*\n${games}${bye}`
+  const head =
+    `🎾 ${title.toUpperCase()} — ${dateLabel(date)}\n` +
+    `${partidas.length} partidas · ${courts} quadra(s)\n` +
+    `As partidas entram na ordem, conforme as quadras vão vagando.\n`
+
+  const emGrupos = Boolean(grupos && grupos.length > 1)
+  const grupoDe = new Map<string, number>()
+  grupos?.forEach((g, i) => g.forEach((id) => grupoDe.set(id, i + 1)))
+  const listaGrupos = emGrupos
+    ? `\n*Grupos*\n${(grupos as string[][])
+        .map((g, i) => `Grupo ${i + 1}: ${g.map(nameOf).join(', ')}`)
+        .join('\n')}\n`
+    : ''
+
+  const corpo = [...partidas]
+    .sort((a, b) => a.round - b.round)
+    .map((m) => {
+      const g = grupoDe.get(m.team_a[0])
+      const tag = emGrupos && g ? `[G${g}] ` : ''
+      const n = String(m.round).padStart(2, ' ')
+      return `${n}. ${tag}${nameOf(m.team_a[0])} + ${nameOf(m.team_a[1])}  x  ${nameOf(m.team_b[0])} + ${nameOf(m.team_b[1])}`
     })
     .join('\n')
-  return `${head}${body}\n\nBora jogar! 💗`
+
+  return `${head}${listaGrupos}\n*Ordem das partidas*\n${corpo}\n\nBora jogar! 💗`
 }
+

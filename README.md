@@ -6,17 +6,24 @@ estatísticas individuais, de duplas e de confrontos.
 
 ## O que ele faz
 
-- **Duplas automáticas e equilibradas** — a cada rodada as combinações mudam
-  (o app evita repetir parceira), as duplas são montadas pela pontuação de cada
-  jogadora para os jogos ficarem parelhos, e as folgas são revezadas de forma justa.
+- **Rodízio completo** — cada menina faz dupla com **cada uma das outras
+  exatamente uma vez**. As duplas são montadas pela pontuação de cada jogadora
+  para os jogos ficarem parelhos, e **quem enfrenta quem também é escolhido**:
+  entre as adversárias possíveis o app pega sempre a dupla que menos se
+  enfrentou com aquela, para os confrontos se espalharem por igual.
+- **Sem rodadas: uma fila de partidas** — as quadras nunca terminam juntas, então
+  não faz sentido esperar a rodada fechar. Cada quadra que vaga puxa da fila a
+  próxima partida cujas quatro meninas estão livres, **dando preferência a quem
+  está fora há mais tempo** — ninguém emenda dois jogos cansada enquanto outra
+  espera sentada.
+- **Dois formatos** — *Todas com todas* (o rodízio inteiro) ou **em grupos**:
+  você escolhe quantas meninas por grupo e o app monta os grupos **por nível**
+  (grupo 1 com as mais bem pontuadas do histórico). Cada grupo é um rodízio
+  próprio, mas **os pontos continuam individuais e o ranking do dia é um só**.
+  Serve para noite curta: com 16 meninas o rodízio inteiro dá 15 jogos para cada
+  uma; em grupos de 8, dá 7.
 - **Quantidade livre** — você informa quantas jogadoras vieram e quantas quadras
-  temos. O app calcula quem folga em cada rodada.
-- **Rodízio completo (padrão)** — o app calcula **sozinho quantas rodadas são
-  necessárias para cada uma fazer dupla com cada uma das outras exatamente uma
-  vez**, e o número se adapta à quantidade de jogadoras da semana. Com 8, 12, 16
-  ou 20 jogadoras o rodízio fecha perfeito: `N−1` rodadas, nenhuma dupla
-  repetida e todas jogando o mesmo número de partidas. Dá para desmarcar e fixar
-  o número de rodadas quando o tempo for curto.
+  temos. O app avisa quando o número não fecha e explica a conta.
 - **Pontuação do cartaz** — partida até 4 pontos, sem empate:
   `4x0 = 4 pts · 4x1 = 3 pts · 4x2 = 2 pts · 4x3 = 1 pt` (a derrota não pontua).
   Dá para mudar o "vai até" na criação do play.
@@ -24,6 +31,13 @@ estatísticas individuais, de duplas e de confrontos.
   status, de 🔥 *Em chamas* (2 sextas) até 👑💎🌟 **Duquesa da V3** (8 ou mais).
   No fechamento do mês a jogadora escolhe **usar** o status (vira pontos e zera)
   ou **preservar** (segue crescendo e ganha 1 vida).
+- **Fechar o mês quando você quiser** — botão com confirmação no Ranking, porque
+  a premiação acontece na última sexta e não na virada do calendário. Dá para
+  reabrir se foi engano ou teste.
+- **Histórico completo** — o ranking zera todo mês, mas **nada é apagado**. Dá
+  para ver o acumulado de sempre no Ranking e nas Stats, e é desse histórico que
+  sai a força usada para equilibrar as duplas — por isso o primeiro play do mês
+  já sai balanceado mesmo com a pontuação do mês zerada.
 - **Ranking do dia e do mês** — pódio com as fotos do top 3 e classificação
   (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento). A tela
   mostra o top 10 e expande para a lista inteira quando você quiser.
@@ -35,7 +49,7 @@ estatísticas individuais, de duplas e de confrontos.
   todas as duplas que já se formaram, com busca e ordenação, e o retrospecto
   completo de cada uma — inclusive contra quem jogaram e o placar de cada partida.
 - **Compartilhar no WhatsApp** — botões que copiam o ranking do mês, o ranking do
-  dia e as duplas de cada rodada já formatados para colar no grupo.
+  dia e a ordem das partidas do dia já formatados para colar no grupo.
 - **Imagem de fechamento do mês** — gera a arte do pódio (1080×1350, formato de
   post/status) com as fotos do top 3, coroa na campeã, pontos, vitórias e as
   demais colocadas. Um toque para compartilhar ou salvar.
@@ -63,7 +77,11 @@ salvos apenas no navegador de quem está usando. Ótimo para testar.
 1. Crie um projeto grátis em <https://supabase.com>.
 2. No **SQL Editor**, cole e rode o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
    Isso cria as tabelas, libera a leitura pública, ativa o tempo real e cria o
-   bucket `photos` para as fotos de perfil.
+   bucket `photos` para as fotos de perfil. Depois rode os arquivos numerados
+   da pasta [`supabase/`](supabase) **na ordem** (`02`, `03`, `04`, `05`): são as
+   migrações que vieram depois. O app funciona sem elas — guarda o que falta no
+   celular de quem organiza — mas aí o modo em grupos, o tempo de descanso e o
+   fechamento do mês não chegam aos outros aparelhos.
 3. Em **Authentication → Users**, clique em *Add user* e crie o login de quem vai
    organizar os plays (e-mail + senha). Só quem tem login consegue editar.
 4. Preencha [`src/config.ts`](src/config.ts) com os dados de
@@ -105,9 +123,14 @@ O app foi feito para ser usado com uma mão, na beira da quadra:
 
 - **Placar em 2 toques** — toca na dupla que venceu, toca em quantos games a
   adversária fez. Pronto, partida lançada. Para corrigir, *Trocar placar*.
-- **Uma rodada por vez** — nada de rolar 24 partidas procurando a atual. O app
-  já abre na primeira rodada que falta placar, com a barrinha de rodadas
-  (✓ marca as que terminaram) e setas para navegar. *Ver todas* mostra tudo.
+- **Uma quadra por vez** — nada de rolar 28 partidas procurando a atual. A tela
+  começa com um cartão por quadra, mostrando o que está em jogo ali agora ou a
+  próxima partida que entra. A fila e as partidas já jogadas ficam recolhidas
+  logo abaixo.
+- **Fora do roteiro também funciona** — *Trocar jogadora* abre uma lista de
+  linhas grandes (nome comprido não é mais problema no celular), *Outra partida*
+  escolhe na mão qual entra naquela quadra, e quando nenhuma partida da fila tem
+  quatro meninas livres o app diz quem está livre e monta uma partida com elas.
 - **Salva na hora** — o placar aparece na tela imediatamente e vai para o banco
   em segundo plano. O topo mostra *tudo salvo* / *salvando…* / *N para enviar*.
 - **Aguenta sinal ruim** — sem internet, os lançamentos ficam guardados no
@@ -145,15 +168,18 @@ as partidas, os pontos e a sequência das duas passam para a que ficar.
 
 O play pode ser criado horas antes de acontecer. Enquanto ele não é finalizado,
 aparece na tela inicial como **Próximo play**, e qualquer pessoa que abrir o link
-— mesmo sem login — vê as duplas de cada rodada e com quem vai jogar.
+— mesmo sem login — vê a fila de partidas e com quem vai jogar.
 
 ## Como usar no dia do play
 
 1. **Meninas** — cadastre as jogadoras (e as fotos).
-2. **Play → Novo Play** — escolha data, quadras, rodadas e marque quem veio.
-3. **Gerar duplas e começar** — o app monta todas as rodadas.
-   Use *Enviar duplas* para colar as combinações no grupo.
-4. Durante os jogos, lance os placares em cada quadra (salva sozinho).
+2. **Play → Novo Play** — escolha data, quadras, o formato (todas com todas ou
+   em grupos) e marque quem veio.
+3. **Gerar partidas e começar** — o app monta a fila inteira.
+   Use *Enviar partidas* para colar a ordem no grupo.
+4. Durante os jogos: **▶️ Partida iniciada** quando a quadra começa, e o placar
+   em 2 toques quando termina. A próxima partida da quadra aparece sozinha,
+   chamando quem está fora há mais tempo.
 5. **Finalizar o dia e somar os pontos** — aparece o ranking do dia para
    compartilhar, e o botão para já deixar o próximo play montado.
 
@@ -200,28 +226,38 @@ a pena preservar justamente quando ela já está fora da briga daquele mês.
 
 ## Como as duplas são montadas
 
-**No rodízio completo** o app usa o *método do círculo* (uma 1-fatoração do grafo
-completo): fixa uma jogadora e gira as outras, gerando conjuntos de duplas em que
-ninguém se repete e toda combinação aparece uma única vez. Essas duplas são então
-distribuídas pelas quadras, e a única escolha que sobra — quem enfrenta quem — é
-usada para equilibrar as partidas. Quando o total de combinações é ímpar
-(9, 10, 11, 14, 15, 18… jogadoras) uma dupla precisa se repetir uma vez, porque
-cada partida consome duas duplas; é inevitável, e o app repete apenas uma.
+**As parceiras** saem do *método do círculo* (uma 1-fatoração do grafo completo):
+fixa uma jogadora e gira as outras, gerando conjuntos de duplas em que ninguém se
+repete e toda combinação aparece uma única vez. Quando o total de combinações é
+ímpar (9, 10, 11, 14, 15, 18… jogadoras) uma dupla precisa jogar duas vezes,
+porque cada partida consome duas duplas; é inevitável, e o app repete só uma —
+marcada com 🔁 na tela.
 
-Testado em 510 simulações de 6 a 24 jogadoras: **cobertura de 100% das duplas em
-todas elas**.
+**As adversárias** são escolhidas, não sorteadas. Entre as duplas que cabem, o app
+pega a que **menos se enfrentou** com aquela — primeiro olhando o próprio dia,
+depois os plays anteriores. Não dá para "nunca se enfrentar": num grupo de 8 são
+28 duplas, 14 partidas e **56 confrontos individuais para só 28 pares possíveis**,
+ou seja, na média cada par se cruza duas vezes. O alvo é espalhar, e o resultado
+medido fica entre **1 e 3 confrontos por par, com média exata de 2,00**.
 
-**No modo de rodadas fixas**, cada jogadora tem uma **força estimada** = média de pontos por partida no
-histórico, com os plays mais recentes pesando mais (quem nunca jogou entra na
-média do grupo). Para cada rodada o app testa vários arranjos e escolhe o de
-menor custo, penalizando nesta ordem: repetir parceira (peso maior), repetir
-adversária, diferença de força entre as duas duplas da partida e juntar a mais
-forte com a mais fraca na mesma quadra.
+**A força de cada jogadora** = média de pontos por partida no **histórico
+completo**, com os plays mais recentes pesando mais (quem nunca jogou entra na
+média do grupo). É por isso que o primeiro play do mês já sai equilibrado, mesmo
+com o ranking do mês zerado.
+
+**A ordem da fila** é montada para espalhar o descanso, e durante o play a próxima
+partida de cada quadra é escolhida olhando **todas as quadras livres de uma vez** —
+senão a mesma menina acaba sugerida em duas quadras ao mesmo tempo.
+
+> Uma quadra só roda sem parar se sobrar gente: quando `quadras × 4` é igual ao
+> número de meninas, ninguém fica de fora e a quadra que terminar primeiro
+> espera as outras. Com pelo menos 4 de folga o rodízio anda sozinho — o app
+> avisa isso na criação do play.
 
 ## Estrutura
 
 ```
-src/lib/pairing.ts   geração das rodadas e duplas equilibradas
+src/lib/pairing.ts   fila de partidas, grupos e duplas equilibradas
 src/lib/scoring.ts   regra de pontuação (4x0=4, 4x1=3, 4x2=2, 4x3=1)
 src/lib/stats.ts     rankings, força estimada, parcerias e confrontos
 src/lib/streaks.ts   sequências de vitórias e bônus "em chamas"

@@ -25,13 +25,18 @@ npx tsc --noEmit # só a checagem de tipos
 
 ```
 src/pages/       telas: Play.tsx (a maior), Ranking.tsx, Stats.tsx, Players.tsx
-src/lib/         regras: pairing (duplas), scoring, streaks (status 🔥), stats,
-                 poster (imagens de fechamento), roster (importar lista), store
+src/lib/         regras: pairing (fila de partidas e grupos), scoring,
+                 streaks (status 🔥), stats, poster (imagens de fechamento),
+                 roster (importar lista), emQuadra (horários locais), store
 src/data/        armazenamento: localRepo (navegador) e supabaseRepo, com fila
                  de escrita otimista que sobrevive a refresh (queue.ts)
 src/config.ts    URL e chave pública do Supabase (NUNCA a secret/service_role)
 supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
 ```
+
+⚠️ Duas colunas do banco têm nome enganoso, mantido para não migrar dados:
+`matches.round` é a **posição na fila** (não existe mais rodada) e
+`sessions.rounds` é o **total de partidas do dia**.
 
 `hasSupabase` decide qual driver é usado. Escrita exige login; leitura é pública.
 
@@ -39,12 +44,25 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
 
 - Partida até 4 pontos, sem empate. Pontos = games do vencedor − do perdedor
   (mínimo 1). Quem perde não pontua.
-- Rodízio completo por padrão: o app calcula quantas rodadas são precisas para
-  cada uma jogar com cada uma exatamente uma vez.
+- **Não há rodadas.** O play é uma **fila de partidas**; cada quadra que vaga
+  puxa da fila a partida cujas quatro meninas estão livres, dando preferência a
+  quem está fora há mais tempo (`proximasDasQuadras`).
+- Rodízio completo: cada uma faz dupla com cada uma das outras exatamente uma
+  vez. **Quem enfrenta quem também é escolhido**, sempre pela dupla que menos
+  se enfrentou até ali — o alvo é espalhar, não zerar (é impossível zerar).
+- **Dois formatos**, escolhidos ao criar o play: `todas` (rodízio único) e
+  `grupos` (o mesmo rodízio dentro de grupos formados por nível, grupo 1 com as
+  mais bem pontuadas). Nos grupos os pontos continuam **individuais** e o
+  ranking do dia é **um só**.
 - **Status 🔥**: mantido terminando a sexta no **pódio do dia** (top 3). Faltar
   na sexta zera o status, mesmo com vida. Escada em `src/lib/streaks.ts`, de
   🔥 *Em chamas* (2) até 👑💎🌟 **Duquesa da V3** (8+). No fim do mês a jogadora
   escolhe **usar** (vira pontos, zera) ou **preservar** (segue e ganha 1 vida).
+- **O mês fecha na mão**, no botão "🏁 Finalizar o mês" do Ranking (dá para
+  reabrir). A premiação acontece na última sexta, antes de o calendário virar.
+- **O ranking zera todo mês, o histórico não.** A força usada para equilibrar as
+  duplas sai de `ratings()`, que lê **todas** as partidas já jogadas com
+  decaimento — por isso o primeiro play do mês já sai equilibrado.
 - **Partida iniciada**: quem está em quadra agora é definido pelo botão
   "▶️ Partida iniciada"; lançar o placar encerra. Isso alimenta o aviso de
   quadra parada e a troca de jogadoras.

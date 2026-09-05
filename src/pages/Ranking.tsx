@@ -26,6 +26,7 @@ import {
   applyBonuses,
   computeStreaks,
   isMaxLevel,
+  mesFechado,
   newChoice,
   onFire,
   PODIO,
@@ -33,7 +34,10 @@ import {
   streakLevel,
 } from '../lib/streaks'
 import { useStore } from '../lib/store'
-import { dateLabel, monthLabel, monthOf, todayISO } from '../lib/types'
+import { dateLabel, monthLabel, monthOf, todayISO, type MonthClosure } from '../lib/types'
+
+/** Opcao do seletor que mostra tudo o que ja foi jogado, sem cortar por mes. */
+const HISTORICO = 'all'
 
 export default function Ranking({
   onToast,
@@ -42,7 +46,7 @@ export default function Ranking({
   onToast: (m: string) => void
   onAbrirPlay?: (sessionId: string) => void
 }) {
-  const { data, nameOf, playerById, canEdit, saveChoice } = useStore()
+  const { data, nameOf, playerById, canEdit, saveChoice, saveClosure, deleteClosure } = useStore()
 
   const months = useMemo(() => {
     const set = new Set(data.sessions.map((s) => monthOf(s.date)))
@@ -54,9 +58,22 @@ export default function Ranking({
   const [verTodas, setVerTodas] = useState(false)
   const [poster, setPoster] = useState<{ url: string; blob: Blob } | null>(null)
   const [gerando, setGerando] = useState(false)
-  const activeMonth = months.includes(month) ? month : months[0]
+  const [fechando, setFechando] = useState(false)
+  const periodo = month === HISTORICO || months.includes(month) ? month : months[0]
+  const historico = periodo === HISTORICO
+  // no historico nao existe "mes ativo"; as partes que so fazem sentido por mes
+  // usam o mes corrente e ficam escondidas
+  const activeMonth = historico ? months[0] : periodo
+  const rotuloPeriodo = historico ? 'Histórico completo' : monthLabel(activeMonth)
 
   const streaks = useMemo(() => computeStreaks(data), [data])
+  const fechado = useMemo(() => mesFechado(data, activeMonth), [data, activeMonth])
+  const naMao = useMemo(
+    () => data.closures.some((c) => c.month === activeMonth),
+    [data.closures, activeMonth],
+  )
+  /** Quem fecharia o mes com status em jogo, se ele fosse fechado agora. */
+  const comStatus = useMemo(() => onFire(streaks), [streaks])
 
   // play ja montado e ainda nao finalizado: as leitoras podem ver as chaves
   const emAndamento = useMemo(
@@ -68,22 +85,22 @@ export default function Ranking({
   )
 
   const rows = useMemo(() => {
-    const ms = playedMatches(data, { month: activeMonth })
-    const awards = streaks.awards.filter((a) => a.month === activeMonth)
+    const ms = playedMatches(data, historico ? {} : { month: activeMonth })
+    const awards = historico ? streaks.awards : streaks.awards.filter((a) => a.month === activeMonth)
     return rankPlayers(applyBonuses(computeStats(ms), awards), nameOf)
-  }, [data, activeMonth, nameOf, streaks])
+  }, [data, activeMonth, historico, nameOf, streaks])
 
-  const fire = useMemo(() => onFire(streaks), [streaks])
+  const fire = comStatus
   const decisoes = useMemo(
-    () => streaks.decisions.filter((d) => d.month === activeMonth),
-    [streaks, activeMonth],
+    () => (historico ? [] : streaks.decisions.filter((d) => d.month === activeMonth)),
+    [streaks, activeMonth, historico],
   )
 
   const totals = useMemo(() => {
-    const ms = playedMatches(data, { month: activeMonth })
+    const ms = playedMatches(data, historico ? {} : { month: activeMonth })
     const days = new Set(ms.map((m) => m.session_id)).size
     return { games: ms.length, days, players: rows.length }
-  }, [data, activeMonth, rows.length])
+  }, [data, activeMonth, historico, rows.length])
 
   const posicoes = useMemo(() => positionsOf(rows), [rows])
   const TOPO = 10
@@ -93,7 +110,9 @@ export default function Ranking({
     setGerando(true)
     try {
       const usoDoMes = new Map(
-        streaks.awards.filter((a) => a.month === activeMonth).map((a) => [a.player_id, a]),
+        streaks.awards
+          .filter((a) => historico || a.month === activeMonth)
+          .map((a) => [a.player_id, a]),
       )
       const linhas = rows.slice(0, 8).map((s, i) => {
         // o fogo e o titulo so aparecem para a campea do mes que usou o status
@@ -111,7 +130,7 @@ export default function Ranking({
           statusPoints: usou?.bonus,
         }
       })
-      const blob = await buildMonthPoster(monthLabel(activeMonth), linhas, `${import.meta.env.BASE_URL}logo.png`)
+      const blob = await buildMonthPoster(rotuloPeriodo, linhas, `${import.meta.env.BASE_URL}logo.png`)
       setPoster({ url: URL.createObjectURL(blob), blob })
     } catch (e) {
       onToast('Não consegui gerar a imagem')
@@ -128,14 +147,14 @@ export default function Ranking({
 
   async function salvarImagem() {
     if (!poster) return
-    const arquivo = new File([poster.blob], `ranking-${activeMonth}.png`, { type: 'image/png' })
+    const arquivo = new File([poster.blob], `ranking-${historico ? 'historico' : activeMonth}.png`, { type: 'image/png' })
     const nav = navigator as Navigator & {
       canShare?: (d: { files: File[] }) => boolean
       share?: (d: { files: File[]; text?: string }) => Promise<void>
     }
     if (nav.canShare?.({ files: [arquivo] }) && nav.share) {
       try {
-        await nav.share({ files: [arquivo], text: `Ranking de ${monthLabel(activeMonth)} 🏆` })
+        await nav.share({ files: [arquivo], text: `Ranking — ${rotuloPeriodo} 🏆` })
         return
       } catch {
         /* cancelou: cai para o download */
@@ -169,25 +188,36 @@ export default function Ranking({
             </span>
             <span className="prox-info">
               {dateLabel(emAndamento.date)} · {emAndamento.player_ids.length} jogadoras ·{' '}
-              {emAndamento.courts} quadras · {emAndamento.rounds} rodadas
+              {emAndamento.courts} quadras · {emAndamento.rounds} partidas
             </span>
-            <span className="prox-acao">ver as duplas de cada rodada →</span>
+            <span className="prox-acao">ver a fila de partidas →</span>
           </span>
         </button>
       )}
 
       <div className="card">
         <div className="row spread">
-          <div className="section-title" style={{ margin: 0 }}>🏆 Ranking do mês</div>
-          <select className="select" style={{ width: 'auto' }} value={activeMonth} onChange={(e) => setMonth(e.target.value)}>
+          <div className="section-title" style={{ margin: 0 }}>
+            {historico ? '🏆 Ranking geral' : '🏆 Ranking do mês'}
+          </div>
+          <select className="select" style={{ width: 'auto' }} value={periodo} onChange={(e) => setMonth(e.target.value)}>
             {months.map((m) => (
               <option key={m} value={m}>{monthLabel(m)}</option>
             ))}
+            <option value={HISTORICO}>🏅 Histórico completo</option>
           </select>
         </div>
 
+        {historico && (
+          <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
+            Soma de <strong>todos os plays já registrados</strong>. O ranking do mês zera a cada
+            virada, mas nada é apagado: é deste histórico que sai a força usada para montar as
+            duplas equilibradas do próximo play.
+          </p>
+        )}
+
         {rows.length === 0 ? (
-          <Empty>Nenhuma partida registrada neste mês ainda.<br />Vá em <strong>Play</strong> e crie o play do dia.</Empty>
+          <Empty>Nenhuma partida registrada {historico ? 'ainda' : 'neste mês ainda'}.<br />Vá em <strong>Play</strong> e crie o play do dia.</Empty>
         ) : (
           <>
             <div className="podium">
@@ -215,7 +245,54 @@ export default function Ranking({
             </div>
           </>
         )}
+
+        {!historico && canEdit && (
+          <div className="fechamento">
+            {fechado ? (
+              <div className="row spread" style={{ gap: 10 }}>
+                <span className="tiny grow">
+                  🏁 <strong>{monthLabel(activeMonth)} está fechado.</strong>{' '}
+                  {naMao
+                    ? 'As escolhas de status aparecem logo abaixo.'
+                    : 'Fechou sozinho porque o calendário já passou do mês.'}
+                </span>
+                {naMao && (
+                  <button
+                    className="btn ghost sm nowrap"
+                    onClick={() => {
+                      if (!confirm(`Reabrir ${monthLabel(activeMonth)}?\n\nAs sequências voltam a correr como se o mês não tivesse fechado. Serve para desfazer um fechamento feito por engano ou para teste.`)) return
+                      deleteClosure(activeMonth)
+                      onToast('Mês reaberto')
+                    }}
+                  >↩️ Reabrir</button>
+                )}
+              </div>
+            ) : (
+              <button className="btn teal block sm" onClick={() => setFechando(true)}>
+                🏁 Finalizar {monthLabel(activeMonth)}
+              </button>
+            )}
+          </div>
+        )}
       </div>
+
+      {fechando && (
+        <ConfirmarFechamento
+          mes={activeMonth}
+          emChamas={comStatus}
+          onClose={() => setFechando(false)}
+          onConfirmar={() => {
+            const closure: MonthClosure = {
+              id: activeMonth,
+              month: activeMonth,
+              closed_at: new Date().toISOString(),
+            }
+            saveClosure(closure)
+            setFechando(false)
+            onToast('Mês finalizado! Agora é só perguntar quem usa o status 🏁')
+          }}
+        />
+      )}
 
       {fire.length > 0 && (
         <div className="card">
@@ -342,7 +419,7 @@ export default function Ranking({
       )}
 
       {poster && (
-        <Modal title={`Fechamento de ${monthLabel(activeMonth)}`} onClose={fecharPoster}>
+        <Modal title={rotuloPeriodo} onClose={fecharPoster}>
           <img src={poster.url} alt="Imagem do ranking do mês" style={{ width: '100%', borderRadius: 14 }} />
           <button className="btn pink block" style={{ marginTop: 12 }} onClick={() => void salvarImagem()}>
             📲 Compartilhar / salvar imagem
@@ -404,6 +481,69 @@ export default function Ranking({
         </p>
       </div>
     </>
+  )
+}
+
+/**
+ * Fechar o mes mexe no mini-game do status, entao a tela mostra exatamente o
+ * que vai acontecer com cada uma antes de confirmar.
+ */
+function ConfirmarFechamento({
+  mes,
+  emChamas,
+  onClose,
+  onConfirmar,
+}: {
+  mes: string
+  emChamas: { player_id: string; streak: number; value: number; life: number }[]
+  onClose: () => void
+  onConfirmar: () => void
+}) {
+  const { nameOf, playerById } = useStore()
+  return (
+    <Modal title={`Finalizar ${monthLabel(mes)}?`} onClose={onClose}>
+      <p className="tiny muted" style={{ marginTop: 0 }}>
+        O mês fecha e o app abre o <strong>fechamento do status</strong>: cada uma que está em
+        chamas escolhe <strong>usar</strong> (vira pontos deste mês e a sequência zera) ou{' '}
+        <strong>preservar</strong> (não pontua, o status continua e ela ganha 1 vida). Sem
+        resposta, fica preservado. Dá para <strong>reabrir</strong> depois, se foi teste.
+      </p>
+
+      {emChamas.length === 0 ? (
+        <div className="banner info" style={{ marginTop: 0 }}>
+          Nenhuma jogadora está em chamas agora, então fechar o mês não muda pontuação nenhuma.
+        </div>
+      ) : (
+        <>
+          <div className="section-title" style={{ fontSize: 13 }}>
+            🔥 {emChamas.length} jogadora(s) fecham com status
+          </div>
+          <div className="stack">
+            {emChamas.map((f) => {
+              const lvl = streakLevel(f.streak)
+              return (
+                <div key={f.player_id} className="row" style={{ gap: 10 }}>
+                  <Avatar player={playerById(f.player_id)} size={34} />
+                  <span className="grow ellipsis" style={{ fontWeight: 700 }}>
+                    {nameOf(f.player_id)} {lvl?.emoji}
+                  </span>
+                  <span className="tiny nowrap" style={{ fontWeight: 800, color: 'var(--pink)' }}>
+                    vale {f.value} pts
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      <button className="btn teal block" style={{ marginTop: 14 }} onClick={onConfirmar}>
+        🏁 Finalizar {monthLabel(mes)}
+      </button>
+      <button className="btn ghost block sm" style={{ marginTop: 8 }} onClick={onClose}>
+        Cancelar
+      </button>
+    </Modal>
   )
 }
 

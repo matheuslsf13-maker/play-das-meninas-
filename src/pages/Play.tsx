@@ -2,22 +2,26 @@ import { useEffect, useMemo, useState } from 'react'
 import ImportarLista from '../components/ImportarLista'
 import { Avatar, Empty, Modal, StatBox, Stepper, shareOrCopy } from '../components/ui'
 import {
-  fullRotationRounds,
-  generateSchedule,
+  formarGrupos,
+  gerarFila,
+  jogadorasDaPartida,
   liberarPartida,
-  matchesPerPlayer,
+  ordemDeEspera,
+  parceirasDoRodizio,
+  partidasDoRodizio,
   planToMatches,
-  type RoundPlan,
+  proximasDasQuadras,
+  refazerFila,
 } from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
-import { loadInicios, saveInicios, type Inicios } from '../lib/emQuadra'
+import { loadFins, loadInicios, saveFins, saveInicios, type Horarios } from '../lib/emQuadra'
 import { buildHistory, computeStats, pairKey, playedMatches, ratings, rankPlayers } from '../lib/stats'
 import { buildDayPoster } from '../lib/poster'
 import { computeStreaks, streakLevel } from '../lib/streaks'
 import { useWakeLock } from '../lib/wakelock'
 import { useStore } from '../lib/store'
-import { dateLabel, todayISO, uid, type Match, type PlaySession } from '../lib/types'
+import { dateLabel, todayISO, uid, type Match, type PlayFormat, type PlaySession } from '../lib/types'
 import { RankTable } from './Ranking'
 
 export default function Play({
@@ -84,7 +88,8 @@ function PlayList({
   onOpen: (id: string) => void
   onNew: () => void
 }) {
-  const { data, canEdit, deleteSession } = useStore()
+  const { data, canEdit } = useStore()
+  const [apagando, setApagando] = useState<PlaySession | null>(null)
   return (
     <>
       {canEdit && (
@@ -101,27 +106,22 @@ function PlayList({
             {sessions.map((s) => {
               const ms = data.matches.filter((m) => m.session_id === s.id)
               const done = ms.filter(isPlayed).length
+              const grupos = s.groups?.length ?? 0
               return (
                 <div key={s.id} className="row" style={{ borderBottom: '1px dashed var(--line)', paddingBottom: 10 }}>
-                  <div className="grow" onClick={() => onOpen(s.id)} style={{ cursor: 'pointer' }}>
+                  <div className="grow" onClick={() => onOpen(s.id)} style={{ cursor: 'pointer', minWidth: 0 }}>
                     <div className="row" style={{ gap: 8 }}>
                       <strong className="ellipsis">{s.title}</strong>
                       <span className={`badge ${s.status}`}>{s.status === 'open' ? 'em andamento' : 'finalizado'}</span>
                     </div>
                     <div className="tiny muted">
-                      {dateLabel(s.date)} · {s.player_ids.length} jogadoras · {s.courts} quadras · {done}/{ms.length} partidas
+                      {dateLabel(s.date)} · {s.player_ids.length} jogadoras · {s.courts} quadras
+                      {grupos > 1 && ` · ${grupos} grupos`} · {done}/{ms.length} partidas
                     </div>
                   </div>
                   <button className="btn ghost sm" onClick={() => onOpen(s.id)}>Abrir</button>
                   {canEdit && (
-                    <button
-                      className="btn danger sm"
-                      onClick={() => {
-                        if (confirm(`Apagar "${s.title}" (${dateLabel(s.date)}) e todas as partidas dele?`)) {
-                          void deleteSession(s.id)
-                        }
-                      }}
-                    >🗑</button>
+                    <button className="btn danger sm" onClick={() => setApagando(s)}>🗑</button>
                   )}
                 </div>
               )
@@ -129,7 +129,83 @@ function PlayList({
           </div>
         )}
       </div>
+      {apagando && <ConfirmarExclusao session={apagando} onClose={() => setApagando(null)} />}
     </>
+  )
+}
+
+/**
+ * Apagar um play tira os pontos das meninas do ranking do mes e pode derrubar
+ * sequencias, entao nao basta um "ok": tem que escrever APAGAR.
+ */
+function ConfirmarExclusao({ session, onClose }: { session: PlaySession; onClose: () => void }) {
+  const { data, nameOf, deleteSession } = useStore()
+  const [texto, setTexto] = useState('')
+  const PALAVRA = 'APAGAR'
+
+  const jogadas = useMemo(
+    () => playedMatches(data, { sessionId: session.id }),
+    [data, session.id],
+  )
+  const perdas = useMemo(() => rankPlayers(computeStats(jogadas), nameOf), [jogadas, nameOf])
+  const finalizado = session.status === 'finished'
+
+  return (
+    <Modal title="Apagar este play?" onClose={onClose}>
+      <div className="banner err" style={{ marginTop: 0 }}>
+        <strong>{session.title}</strong> — {dateLabel(session.date)}
+        <br />
+        Isso apaga <strong>{jogadas.length} partida(s) já jogada(s)</strong> e não tem como desfazer.
+      </div>
+
+      {perdas.length > 0 && (
+        <>
+          <p className="tiny muted" style={{ marginBottom: 6 }}>
+            Estes pontos saem do ranking do mês:
+          </p>
+          <div className="stack" style={{ marginBottom: 12 }}>
+            {perdas.slice(0, 5).map((s) => (
+              <div key={s.player_id} className="row tiny" style={{ gap: 8 }}>
+                <span className="grow ellipsis">{nameOf(s.player_id)}</span>
+                <strong style={{ color: 'var(--pink)' }}>−{s.points} pts</strong>
+              </div>
+            ))}
+            {perdas.length > 5 && (
+              <div className="tiny muted">e mais {perdas.length - 5} jogadora(s).</div>
+            )}
+          </div>
+        </>
+      )}
+
+      {finalizado && (
+        <div className="banner warn">
+          🔥 Este play já foi finalizado. Apagar também <strong>refaz as sequências</strong>: quem
+          subiu ao pódio nesse dia pode perder o status.
+        </div>
+      )}
+
+      <label className="field">
+        <span>Para confirmar, escreva {PALAVRA}</span>
+        <input
+          className="input"
+          value={texto}
+          autoCapitalize="characters"
+          placeholder={PALAVRA}
+          onChange={(e) => setTexto(e.target.value)}
+        />
+      </label>
+      <button
+        className="btn danger block"
+        style={{ marginTop: 12 }}
+        disabled={texto.trim().toUpperCase() !== PALAVRA}
+        onClick={() => { void deleteSession(session.id); onClose() }}
+      >
+        🗑 Apagar o play e os {jogadas.length} resultado(s)
+      </button>
+      <button className="btn ghost block sm" style={{ marginTop: 8 }} onClick={onClose}>
+        Cancelar
+      </button>
+    </Modal>
   )
 }
 
@@ -146,12 +222,12 @@ function NewPlay({
   onCreated: (id: string) => void
   onToast: (m: string) => void
 }) {
-  const { data, saveSession, saveMatches, playerById } = useStore()
+  const { data, saveSession, saveMatches, playerById, nameOf } = useStore()
   const [date, setDate] = useState(preset.date ?? todayISO())
   const [title, setTitle] = useState(preset.title ?? 'Play de Sexta')
   const [courts, setCourts] = useState(preset.courts ?? 3)
-  const [rounds, setRounds] = useState(preset.rounds ?? 8)
-  const [rodizio, setRodizio] = useState(true)
+  const [format, setFormat] = useState<PlayFormat>(preset.format ?? 'todas')
+  const [porGrupo, setPorGrupo] = useState(8)
   const [importando, setImportando] = useState(false)
   const [target, setTarget] = useState(preset.target ?? 4)
   const [selected, setSelected] = useState<string[]>(preset.player_ids ?? [])
@@ -164,17 +240,23 @@ function NewPlay({
   const maxCourts = Math.max(1, Math.floor(selected.length / 4))
   const effCourts = Math.min(courts, maxCourts)
 
-  // rodizio completo: rodadas suficientes para cada uma jogar com cada uma
-  const autoRounds = useMemo(
-    () => (selected.length >= 4 ? fullRotationRounds(selected.length, effCourts) : 0),
-    [selected.length, effCourts],
+  const forca = useMemo(() => ratings(data, date), [data, date])
+
+  // no modo em grupos o app decide quantos grupos cabem: quem escolhe e o
+  // tamanho, e a conta sai do numero de meninas que confirmaram
+  const grupos = useMemo(
+    () =>
+      format === 'grupos' && selected.length >= 8
+        ? formarGrupos(selected, forca, porGrupo)
+        : [selected],
+    [format, selected, forca, porGrupo],
   )
-  const effRounds = rodizio ? autoRounds : rounds
-  const perPlayer = rodizio
-    ? selected.length - 1
-    : matchesPerPlayer(selected.length, effCourts, effRounds)
-  const restPerRound = selected.length - effCourts * 4
-  const possiveis = Math.max(0, selected.length - 1)
+  const tamanhos = grupos.map((g) => g.length)
+
+  const totalPartidas = tamanhos.reduce((t, n) => t + partidasDoRodizio(n), 0)
+  const parceirasMin = Math.min(...tamanhos.map(parceirasDoRodizio))
+  const parceirasMax = Math.max(...tamanhos.map(parceirasDoRodizio))
+  const restPorVez = selected.length - effCourts * 4
 
   function toggle(id: string) {
     setSelected((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
@@ -187,28 +269,29 @@ function NewPlay({
     }
     setBusy(true)
     try {
-      const plans = generateSchedule({
+      const emGrupos = format === 'grupos' && grupos.length > 1
+      const fila = gerarFila({
         playerIds: selected,
-        courts: effCourts,
-        rounds: effRounds,
-        ratings: ratings(data, date),
+        ratings: forca,
         history: buildHistory(playedMatches(data)),
-        mode: rodizio ? 'completo' : 'fixo',
+        groups: emGrupos ? grupos : undefined,
       })
       const session: PlaySession = {
         id: uid(),
         date,
         title: title.trim() || 'Play de Sexta',
         courts: effCourts,
-        rounds: plans.length, // no rodizio, quem manda no total e o proprio rodizio
+        rounds: fila.length, // a coluna se chama rounds; hoje e o total de partidas
         target,
         player_ids: selected,
         status: 'open',
         created_at: new Date().toISOString(),
+        format: emGrupos ? 'grupos' : 'todas',
+        groups: emGrupos ? grupos : null,
       }
       await saveSession(session)
-      await saveMatches(planToMatches(session.id, plans))
-      onToast('Duplas geradas! 🎾')
+      await saveMatches(planToMatches(session.id, fila))
+      onToast('Partidas geradas! 🎾')
       onCreated(session.id)
     } finally {
       setBusy(false)
@@ -231,7 +314,7 @@ function NewPlay({
             <span>Data</span>
             <input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
-          <div className="grid3">
+          <div className="grid2">
             <div className="field">
               <span>Quadras</span>
               <Stepper value={courts} min={1} max={12} onChange={setCourts} />
@@ -244,52 +327,56 @@ function NewPlay({
               </em>
             </div>
             <div className="field">
-              <span>Rodadas</span>
-              <Stepper
-                value={rodizio ? effRounds : rounds}
-                min={1}
-                max={40}
-                onChange={setRounds}
-                disabled={rodizio}
-                vazio="—"
-              />
-              <em className="hint">
-                {rodizio ? 'calculado pelo rodízio completo' : 'quantas vezes vão trocar de dupla'}
-              </em>
-            </div>
-            <div className="field">
               <span>Vai até</span>
               <Stepper value={target} min={1} max={21} onChange={setTarget} />
               <em className="hint">pontos para vencer a partida — o padrão é 4</em>
             </div>
           </div>
-          <div className="toggle-card">
-            <label className="row" style={{ gap: 10, cursor: 'pointer' }}>
-              <input type="checkbox" checked={rodizio} onChange={(e) => setRodizio(e.target.checked)} />
-              <span className="grow">
-                <strong>🔁 Todas jogam com todas</strong>
-                <span className="hint" style={{ marginTop: 2 }}>
-                  o app calcula quantas rodadas são necessárias para cada uma fazer dupla
-                  com cada uma das outras, exatamente uma vez
-                </span>
-              </span>
-            </label>
+
+          <div className="field">
+            <span>Formato</span>
+            <div className="segmented">
+              <button className={format === 'todas' ? 'on' : ''} onClick={() => setFormat('todas')}>
+                🔁 Todas com todas
+              </button>
+              <button className={format === 'grupos' ? 'on' : ''} onClick={() => setFormat('grupos')}>
+                🅰️ Em grupos
+              </button>
+            </div>
+            <em className="hint">
+              {format === 'todas'
+                ? 'cada menina faz dupla com cada uma das outras exatamente uma vez'
+                : 'o mesmo rodízio, mas dentro de cada grupo — os pontos continuam individuais e o ranking do dia é um só'}
+            </em>
           </div>
+
+          {format === 'grupos' && (
+            <div className="toggle-card">
+              <div className="field" style={{ marginBottom: 0 }}>
+                <span>Meninas por grupo</span>
+                <Stepper value={porGrupo} min={4} max={12} onChange={setPorGrupo} />
+                <em className="hint">
+                  {selected.length < 8
+                    ? 'com menos de 8 confirmadas não dá para dividir: vai sair um grupo só'
+                    : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com as mais bem pontuadas do histórico`}
+                </em>
+              </div>
+            </div>
+          )}
 
           <p className="tiny muted" style={{ margin: '2px 2px 0' }}>
             {selected.length < 4 ? (
-              'Escolha as jogadoras abaixo para o app calcular as rodadas.'
-            ) : rodizio ? (
-              <>
-                <strong>{effRounds} rodadas × {effCourts} quadras = {effRounds * effCourts} partidas.</strong>{' '}
-                Cada uma joga <strong>{perPlayer} partidas</strong> e faz dupla com{' '}
-                <strong>cada uma das outras {possiveis}</strong> exatamente uma vez.
-              </>
+              'Escolha as jogadoras abaixo para o app calcular as partidas.'
             ) : (
               <>
-                <strong>{effRounds} rodadas × {effCourts} quadras = {effRounds * effCourts} partidas.</strong>{' '}
-                Cada uma joga <strong>{perPlayer} partidas</strong>, ou seja, faz dupla com{' '}
-                {Math.min(perPlayer, possiveis)} das {possiveis} possíveis parceiras.
+                <strong>{totalPartidas} partidas</strong> no total, entrando conforme as quadras vagam.
+                Cada uma faz dupla com{' '}
+                <strong>
+                  {parceirasMin === parceirasMax
+                    ? `as outras ${parceirasMin}`
+                    : `${parceirasMin} a ${parceirasMax} parceiras`}
+                </strong>
+                , exatamente uma vez com cada.
               </>
             )}{' '}
             Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos.
@@ -299,21 +386,43 @@ function NewPlay({
             <div className="banner err" style={{ margin: '10px 0 0' }}>
               🏐 <strong>Não dá para usar {courts} quadras com {selected.length} jogadoras.</strong>{' '}
               Cada quadra ocupa 4 meninas ao mesmo tempo, então {courts} quadras precisam de{' '}
-              <strong>{courts * 4} jogadoras</strong> na mesma rodada —{' '}
+              <strong>{courts * 4} jogadoras</strong> jogando juntas —{' '}
               {courts * 4 - selected.length === 1
                 ? 'falta 1 jogadora'
                 : `faltam ${courts * 4 - selected.length} jogadoras`}.
               <br />
               Vou montar o play com <strong>{effCourts} quadra(s)</strong>
-              {restPerRound > 0 && <>, revezando quem folga a cada rodada</>}.
+              {restPorVez > 0 && <>, revezando quem fica de fora</>}.
             </div>
           )}
 
-          {rodizio && effRounds > 12 && (
+          {selected.length >= 4 && effCourts === courts && restPorVez === 0 && (
             <div className="banner warn" style={{ margin: '10px 0 0' }}>
-              ⏱️ São <strong>{effRounds} rodadas</strong> — pode ser longo para uma noite só.
-              Se o tempo for curto, desmarque o rodízio e escolha quantas rodadas cabem;
-              o app continua evitando repetir duplas.
+              🪑 Com <strong>{selected.length} jogadoras em {effCourts} quadras</strong> todas jogam
+              ao mesmo tempo e <strong>ninguém fica de fora</strong>. Só que as quadras nunca
+              terminam juntas: a que acabar primeiro vai esperar as outras, porque as quatro meninas
+              da próxima partida ainda estão jogando. Com pelo menos <strong>4 de folga</strong>{' '}
+              ({effCourts * 4 + 4} jogadoras para {effCourts} quadras) o rodízio anda sozinho e todo
+              mundo descansa entre um jogo e outro.
+            </div>
+          )}
+
+          {format === 'todas' && totalPartidas > 40 && (
+            <div className="banner warn" style={{ margin: '10px 0 0' }}>
+              ⏱️ São <strong>{totalPartidas} partidas</strong> e cada uma joga {parceirasMax} vezes —
+              pode ser longo para uma noite só. O modo <strong>em grupos</strong> resolve isso:
+              com grupos de 8 cada menina joga 7 partidas.
+            </div>
+          )}
+
+          {format === 'grupos' && grupos.length > 1 && (
+            <div className="stack" style={{ marginTop: 4 }}>
+              {grupos.map((g, i) => (
+                <div key={i} className="grupo-box">
+                  <div className="grupo-nome">Grupo {i + 1} · {g.length} meninas · {partidasDoRodizio(g.length)} partidas</div>
+                  <div className="tiny">{g.map(nameOf).join(' · ')}</div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -351,9 +460,12 @@ function NewPlay({
 
         {selected.length >= 4 && (
           <div className="banner info" style={{ marginTop: 14, marginBottom: 0 }}>
-            Com <strong>{selected.length} jogadoras</strong> dá para usar <strong>{effCourts} quadra(s)</strong> por rodada
-            {restPerRound > 0 ? ` (${restPerRound} folga(m) a cada rodada, revezando de forma justa)` : ' (todas jogam todas as rodadas)'}.
+            Com <strong>{selected.length} jogadoras</strong> dá para usar <strong>{effCourts} quadra(s)</strong> ao mesmo tempo
+            {restPorVez > 0 ? ` (${restPorVez} esperam a vez, e entra sempre quem está fora há mais tempo)` : ' (todas jogam ao mesmo tempo)'}.
             {effCourts < courts && ' Ajustei o número de quadras para caber todo mundo.'}
+            <br />
+            A força de cada uma vem do <strong>histórico completo</strong>, não do ranking do mês —
+            por isso o primeiro play do mês já sai equilibrado mesmo com a pontuação zerada.
           </div>
         )}
       </div>
@@ -367,10 +479,19 @@ function NewPlay({
       )}
 
       <button className="btn pink block" disabled={selected.length < 4 || busy} onClick={() => void create()}>
-        {busy ? 'Montando as duplas…' : `✨ Gerar ${effRounds || ''} rodadas e começar`}
+        {busy ? 'Montando as duplas…' : `✨ Gerar ${totalPartidas || ''} partidas e começar`}
       </button>
     </>
   )
+}
+
+/** "2 grupos de 8" quando dao certo, "3 grupos: 7, 7 e 6" quando nao. */
+function descreverGrupos(tamanhos: number[]): string {
+  const n = tamanhos.length
+  if (n === 1) return `1 grupo de ${tamanhos[0]}`
+  if (tamanhos.every((t) => t === tamanhos[0])) return `${n} grupos de ${tamanhos[0]}`
+  const lista = tamanhos.slice(0, -1).join(', ') + ' e ' + tamanhos[n - 1]
+  return `${n} grupos: ${lista}`
 }
 
 /** Devolve a partida com uma jogadora trocada por outra. */
@@ -400,6 +521,9 @@ function PlayDetail({
   const [showRank, setShowRank] = useState(false)
   const [arte, setArte] = useState<{ url: string; blob: Blob } | null>(null)
   const [gerando, setGerando] = useState(false)
+  /** Partida escolhida na mao para uma quadra, no lugar da sugestao. */
+  const [manuais, setManuais] = useState<Record<number, string>>({})
+  const [escolhendo, setEscolhendo] = useState<number | null>(null)
 
   const matches = useMemo(
     () =>
@@ -409,15 +533,6 @@ function PlayDetail({
     [data.matches, session.id],
   )
 
-  const rounds = useMemo(() => {
-    const map = new Map<number, Match[]>()
-    for (const m of matches) {
-      if (!map.has(m.round)) map.set(m.round, [])
-      map.get(m.round)!.push(m)
-    }
-    return [...map.entries()].sort((a, b) => a[0] - b[0])
-  }, [matches])
-
   const dayRows = useMemo(() => {
     const ms = playedMatches(data, { sessionId: session.id })
     return rankPlayers(computeStats(ms), nameOf)
@@ -425,6 +540,12 @@ function PlayDetail({
 
   const doneCount = matches.filter(isPlayed).length
   const finished = session.status === 'finished'
+  const grupos = session.groups ?? null
+  const grupoDe = useMemo(() => {
+    const map = new Map<string, number>()
+    grupos?.forEach((g, i) => g.forEach((id) => map.set(id, i + 1)))
+    return map
+  }, [grupos])
 
   // sequencias que avancaram neste play (so existe depois de finalizado)
   const passos = useMemo(
@@ -434,8 +555,10 @@ function PlayDetail({
   const award = passos[0]
   const awardLevel = award ? streakLevel(award.streak) : null
 
-  // inicios guardados no proprio celular, para nao dependerem da volta do banco
-  const [inicios, setInicios] = useState<Inicios>(() => loadInicios())
+  // inicios e fins guardados no proprio celular, para nao dependerem da volta
+  // do banco (ver src/lib/emQuadra.ts)
+  const [inicios, setInicios] = useState<Horarios>(() => loadInicios())
+  const [fins, setFins] = useState<Horarios>(() => loadFins())
 
   function marcarInicio(id: string, quando: string | null) {
     setInicios((prev) => {
@@ -447,7 +570,17 @@ function PlayDetail({
     })
   }
 
-  // limpa marcacoes de partidas que ja tem placar ou que nao existem mais
+  function marcarFim(id: string, quando: string | null) {
+    setFins((prev) => {
+      const next = { ...prev }
+      if (quando) next[id] = quando
+      else delete next[id]
+      saveFins(next)
+      return next
+    })
+  }
+
+  // limpa marcacoes de inicio de partidas que ja tem placar
   useEffect(() => {
     const vivas = new Set(matches.filter((m) => !isPlayed(m)).map((m) => m.id))
     const sujas = Object.keys(inicios).filter((id) => !vivas.has(id) && matches.some((m) => m.id === id))
@@ -460,28 +593,146 @@ function PlayDetail({
     })
   }, [matches, inicios])
 
+  const iniciada = (m: Match) => !isPlayed(m) && !!(m.started_at ?? inicios[m.id])
+
   /** Hora em que a partida entrou em quadra (banco ou celular), se estiver rolando. */
   function inicioDe(m: Match): string | null {
     if (isPlayed(m)) return null
     return m.started_at ?? inicios[m.id] ?? null
   }
 
+  const emJogo = useMemo(() => matches.filter(iniciada), [matches, inicios])
+  const pendentes = useMemo(
+    () => matches.filter((m) => !isPlayed(m) && !iniciada(m)),
+    [matches, inicios],
+  )
+  const jogadas = useMemo(() => matches.filter(isPlayed), [matches])
+
+  const ocupadas = useMemo(() => {
+    const s = new Set<string>()
+    for (const m of emJogo) for (const id of jogadorasDaPartida(m)) s.add(id)
+    return s
+  }, [emJogo])
+
+  /** Quantas partidas cada uma ja fez hoje. */
+  const jogos = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const m of jogadas) for (const id of jogadorasDaPartida(m)) map.set(id, (map.get(id) ?? 0) + 1)
+    return map
+  }, [jogadas])
+
+  /**
+   * Fila de espera: 0 e quem esta fora ha mais tempo. Sem hora registrada
+   * (banco antigo, outro aparelho) a jogadora conta como "jogou ha muito".
+   */
+  const espera = useMemo(() => {
+    const ultimo = new Map<string, number>()
+    for (const m of jogadas) {
+      const iso = m.ended_at ?? fins[m.id] ?? null
+      const t = iso ? Date.parse(iso) : 0
+      for (const id of jogadorasDaPartida(m)) {
+        ultimo.set(id, Math.max(ultimo.get(id) ?? 0, Number.isNaN(t) ? 0 : t))
+      }
+    }
+    return ordemDeEspera(session.player_ids, (id) => ultimo.get(id) ?? null)
+  }, [jogadas, fins, session.player_ids])
+
+  const quadras = useMemo(
+    () => Array.from({ length: Math.max(1, session.courts) }, (_, i) => i + 1),
+    [session.courts],
+  )
+  const emQuadra = useMemo(() => {
+    const map = new Map<number, Match>()
+    for (const m of emJogo) if (!map.has(m.court)) map.set(m.court, m)
+    return map
+  }, [emJogo])
+  const quadrasLivres = quadras.filter((q) => !emQuadra.has(q))
+
+  /** Sugestao de proxima partida por quadra livre, respeitando escolhas na mao. */
+  const proximas = useMemo(() => {
+    const escolhidasNaMao = new Map<number, Match>()
+    const reservadas = new Set<string>()
+    for (const q of quadrasLivres) {
+      const id = manuais[q]
+      const m = id ? pendentes.find((x) => x.id === id) : undefined
+      if (m) {
+        escolhidasNaMao.set(q, m)
+        reservadas.add(m.id)
+      }
+    }
+    const restantes = quadrasLivres.filter((q) => !escolhidasNaMao.has(q))
+    const ocupadasComManuais = new Set(ocupadas)
+    for (const m of escolhidasNaMao.values()) {
+      for (const id of jogadorasDaPartida(m)) ocupadasComManuais.add(id)
+    }
+    const auto = proximasDasQuadras({
+      pendentes: pendentes.filter((m) => !reservadas.has(m.id)),
+      ocupadas: ocupadasComManuais,
+      espera,
+      jogos,
+      quadrasLivres: restantes,
+    })
+    return new Map([...escolhidasNaMao, ...auto])
+  }, [quadrasLivres, manuais, pendentes, ocupadas, espera, jogos])
+
+  /**
+   * Quem nao esta disponivel para esta partida: as que estao em quadra agora e
+   * as que ja foram escaladas para a proxima partida de outra quadra.
+   */
+  function ocupadasFora(m: Match): Set<string> {
+    const fora = new Set<string>()
+    for (const atual of [...emJogo, ...proximas.values()]) {
+      if (atual.id === m.id) continue
+      for (const id of jogadorasDaPartida(atual)) fora.add(id)
+    }
+    return fora
+  }
+
+  /** Quem nao esta nem jogando nem escalada para nenhuma quadra. */
+  const livresAgora = useMemo(() => {
+    const comprometidas = new Set(ocupadas)
+    for (const m of proximas.values()) for (const id of jogadorasDaPartida(m)) comprometidas.add(id)
+    return session.player_ids.filter((id) => !comprometidas.has(id))
+  }, [ocupadas, proximas, session.player_ids])
+
+  /** Duplas que aparecem mais de uma vez no dia (sobra do rodizio impar). */
+  const duplasRepetidas = useMemo(() => {
+    const vistas = new Map<string, string>() // dupla -> id da primeira partida
+    const repetidas = new Set<string>() // ids de partida que repetem uma dupla
+    for (const m of matches) {
+      for (const d of [m.team_a, m.team_b]) {
+        const k = pairKey(d[0], d[1])
+        if (vistas.has(k) && vistas.get(k) !== m.id) repetidas.add(m.id)
+        else if (!vistas.has(k)) vistas.set(k, m.id)
+      }
+    }
+    return repetidas
+  }, [matches])
+
   function setScore(m: Match, a: number | null, b: number | null) {
     // lancar o placar tambem encerra a partida: a quadra fica livre de novo
+    const agora = new Date().toISOString()
     marcarInicio(m.id, null)
-    saveMatches([{ ...m, score_a: a, score_b: b, started_at: null }])
+    const encerrando = a !== null && b !== null
+    marcarFim(m.id, encerrando ? agora : null)
+    saveMatches([{ ...m, score_a: a, score_b: b, started_at: null, ended_at: encerrando ? agora : null }])
   }
 
   /** Botao "partida iniciada": e a partir daqui que o app sabe quem esta em quadra. */
-  function iniciar(m: Match) {
+  function iniciar(m: Match, quadra: number) {
     const agora = new Date().toISOString()
     marcarInicio(m.id, agora)
-    saveMatches([{ ...m, started_at: agora }])
+    setManuais((prev) => {
+      const next = { ...prev }
+      delete next[quadra]
+      return next
+    })
+    saveMatches([{ ...m, court: quadra, started_at: agora }])
   }
 
   function cancelarInicio(m: Match) {
     marcarInicio(m.id, null)
-    saveMatches([{ ...m, started_at: null }])
+    saveMatches([{ ...m, court: 0, started_at: null }])
   }
 
   useWakeLock(!finished)
@@ -539,78 +790,46 @@ function PlayDetail({
   }
 
   /**
-   * Refaz so as partidas que ainda nao aconteceram, preservando tudo que ja
-   * tem placar. Serve para quando o play saiu do roteiro -- trocas na mao,
-   * quadra travada, ou um play que comecou no papel e entrou no app depois.
+   * Refaz so o que ainda nao aconteceu: junta as duplas que ainda faltam
+   * formar e monta as partidas em cima do que ja foi jogado hoje.
    */
-  function regenerarPendentes() {
-    const jogos = new Map<string, number>()
-    for (const m of matches) {
-      if (!isPlayed(m)) continue
-      for (const id of [...m.team_a, ...m.team_b]) jogos.set(id, (jogos.get(id) ?? 0) + 1)
-    }
-    const hist = buildHistory([...playedMatches(data).filter((m) => m.session_id !== session.id), ...matches.filter(isPlayed)])
-    const forca = ratings(data, session.date)
-    const novas: Match[] = []
-
-    for (const [, ms] of rounds) {
-      const pendentes = ms.filter((m) => !isPlayed(m))
-      if (pendentes.length === 0) continue
-      // quem ja jogou nesta rodada nao pode entrar de novo nela
-      const naRodada = new Set(ms.filter(isPlayed).flatMap((m) => [...m.team_a, ...m.team_b]))
-      const pool = session.player_ids.filter((id) => !naRodada.has(id))
-      const precisa = pendentes.length * 4
-      if (pool.length < precisa) continue
-
-      // entram primeiro as que jogaram menos hoje
-      const escolhidas = pool
-        .map((id) => ({ id, n: jogos.get(id) ?? 0, sorte: Math.random() }))
-        .sort((a, b) => a.n - b.n || a.sorte - b.sorte)
-        .slice(0, precisa)
-        .map((x) => x.id)
-
-      const plano = generateSchedule({
-        playerIds: escolhidas,
-        courts: pendentes.length,
-        rounds: 1,
-        ratings: forca,
-        history: hist,
-        historyWeight: 1,
-        mode: 'fixo',
-      })
-      plano[0]?.matches.forEach((nova, i) => {
-        const alvo = pendentes[i]
-        if (!alvo) return
-        novas.push({ ...alvo, team_a: nova.team_a, team_b: nova.team_b })
-        for (const id of [...nova.team_a, ...nova.team_b]) jogos.set(id, (jogos.get(id) ?? 0) + 1)
-        // alimenta o historico para as rodadas seguintes nao repetirem
-        for (const t of [nova.team_a, nova.team_b]) {
-          hist.partner.set(pairKey(t[0], t[1]), (hist.partner.get(pairKey(t[0], t[1])) ?? 0) + 1)
-        }
-        for (const x of nova.team_a) {
-          for (const y of nova.team_b) hist.opponent.set(pairKey(x, y), (hist.opponent.get(pairKey(x, y)) ?? 0) + 1)
-        }
-      })
-    }
-
-    if (novas.length === 0) {
-      onToast('Não há partidas pendentes para refazer')
+  async function regenerarPendentes() {
+    const naFila = matches.filter((m) => !isPlayed(m) && !iniciada(m))
+    if (naFila.length === 0) {
+      onToast('Não há partidas na fila para refazer')
       return
     }
-    saveMatches(novas)
+    const fila = refazerFila({
+      playerIds: session.player_ids,
+      groups: session.groups ?? undefined,
+      jogadas,
+      ratings: ratings(data, session.date),
+      history: buildHistory(playedMatches(data).filter((m) => m.session_id !== session.id)),
+      historyWeight: 1,
+    })
+    const preservadas = matches.filter((m) => isPlayed(m) || iniciada(m))
+    // a fila nova entra depois da ultima posicao ja usada, para nao haver duas
+    // partidas com o mesmo numero na lista
+    const ultima = preservadas.reduce((n, m) => Math.max(n, m.round), 0)
+    const novas = planToMatches(session.id, fila).map((m, i) => ({
+      ...m,
+      round: ultima + i + 1,
+    }))
+    await replaceSessionMatches(session.id, [...preservadas, ...novas])
+    await saveSession({ ...session, rounds: preservadas.length + novas.length })
     onToast(`${novas.length} partida(s) refeita(s) 🔄`)
   }
 
   async function regenerate() {
     if (doneCount > 0 && !confirm('Já existem placares lançados. Gerar novas duplas apaga todos os resultados deste play. Continuar?')) return
-    const plans = generateSchedule({
+    const fila = gerarFila({
       playerIds: session.player_ids,
-      courts: session.courts,
-      rounds: session.rounds,
+      groups: session.groups ?? undefined,
       ratings: ratings(data, session.date),
       history: buildHistory(playedMatches(data).filter((m) => m.session_id !== session.id)),
     })
-    await replaceSessionMatches(session.id, planToMatches(session.id, plans))
+    await replaceSessionMatches(session.id, planToMatches(session.id, fila))
+    await saveSession({ ...session, rounds: fila.length })
     onToast('Novas duplas geradas 🔄')
   }
 
@@ -621,54 +840,18 @@ function PlayDetail({
     onToast('Play finalizado! Pontos somados ao ranking do mês 🏆')
   }
 
-  /**
-   * Quem esta em quadra AGORA: as partidas que foram marcadas como iniciadas
-   * e ainda nao tem placar. E o organizador quem diz -- botao "partida
-   * iniciada" -- entao nao ha adivinhacao por rodada ou por quadra.
-   */
-  const emJogo = useMemo(
-    () => matches.filter((m) => !isPlayed(m) && !!(m.started_at ?? inicios[m.id])),
-    [matches, inicios],
-  )
-
-  /** A proxima partida de cada quadra (a primeira sem placar e sem inicio). */
-  const proximaDaQuadra = useMemo(() => {
-    const porQuadra = new Map<number, Match>()
-    for (const m of matches) {
-      if (isPlayed(m) || m.started_at || inicios[m.id]) continue
-      if (!porQuadra.has(m.court)) porQuadra.set(m.court, m)
-    }
-    return porQuadra
-  }, [matches, inicios])
-
-  /** Quem esta jogando agora em OUTRA partida. */
-  function ocupadasFora(m: Match): Set<string> {
-    const fora = new Set<string>()
-    for (const atual of emJogo) {
-      if (atual.id === m.id) continue
-      for (const id of [...atual.team_a, ...atual.team_b]) fora.add(id)
-    }
-    return fora
-  }
-
-  /** Esta partida e a proxima a entrar na quadra dela? */
-  function ehAProxima(m: Match): boolean {
-    return proximaDaQuadra.get(m.court)?.id === m.id
-  }
-
   /** Troca as ocupadas por quem esta livre, mantendo equilibrio e duplas novas. */
   function liberarQuadra(m: Match) {
-    const ocupadas = ocupadasFora(m)
-    const jogos = new Map<string, number>()
-    for (const x of matches) {
-      if (!isPlayed(x)) continue
-      for (const id of [...x.team_a, ...x.team_b]) jogos.set(id, (jogos.get(id) ?? 0) + 1)
+    const indisponiveis = new Set(ocupadas)
+    for (const p of proximas.values()) {
+      if (p.id === m.id) continue
+      for (const id of jogadorasDaPartida(p)) indisponiveis.add(id)
     }
     const trocas = liberarPartida({
-      time: [...m.team_a, ...m.team_b] as [string, string, string, string],
-      ocupadas,
+      time: jogadorasDaPartida(m) as [string, string, string, string],
+      ocupadas: indisponiveis,
       todas: session.player_ids,
-      jogos,
+      espera,
       ratings: ratings(data, session.date),
       history: buildHistory(playedMatches(data)),
     })
@@ -686,11 +869,7 @@ function PlayDetail({
     saveMatches([trocarNaPartida(m, sai, entra)])
   }
 
-  const plansForShare: RoundPlan[] = rounds.map(([round, ms]) => ({
-    round,
-    matches: ms.map((m) => ({ court: m.court, team_a: m.team_a, team_b: m.team_b })),
-    byes: session.player_ids.filter((p) => !ms.some((m) => [...m.team_a, ...m.team_b].includes(p))),
-  }))
+  const editable = canEdit && !finished
 
   return (
     <>
@@ -702,24 +881,27 @@ function PlayDetail({
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 19, fontWeight: 800 }}>{session.title}</div>
           <div className="small muted">
-            {dateLabel(session.date)} · {session.player_ids.length} jogadoras · {session.courts} quadras · {session.rounds} rodadas · até {session.target} pontos
+            {dateLabel(session.date)} · {session.player_ids.length} jogadoras · {session.courts} quadras
+            {grupos && grupos.length > 1 && ` · ${grupos.length} grupos`} · até {session.target} pontos
           </div>
         </div>
         <div className="grid3" style={{ marginTop: 12 }}>
           <StatBox k="Partidas" v={`${doneCount}/${matches.length}`} />
-          <StatBox k="Rodadas" v={rounds.length} />
+          <StatBox k="Em quadra" v={emJogo.length} />
           <StatBox k="Líder do dia" v={<span style={{ fontSize: 13 }}>{dayRows[0] ? nameOf(dayRows[0].player_id).split(' ')[0] : '—'}</span>} />
         </div>
         <div className="row wrap" style={{ gap: 8, marginTop: 12 }}>
           <button className="btn ghost sm" onClick={async () => {
-            const ok = await shareOrCopy(scheduleText(session.date, session.title, plansForShare, nameOf))
-            onToast(ok ? 'Duplas copiadas 💬' : 'Não consegui copiar')
-          }}>💬 Enviar duplas</button>
+            const ok = await shareOrCopy(
+              scheduleText(session.date, session.title, session.courts, matches, nameOf, grupos),
+            )
+            onToast(ok ? 'Partidas copiadas 💬' : 'Não consegui copiar')
+          }}>💬 Enviar partidas</button>
           <button className="btn ghost sm" onClick={() => setShowRank(true)}>🏆 Ranking do dia</button>
-          {canEdit && !finished && (
+          {editable && (
             <>
-              <button className="btn ghost sm" onClick={regenerarPendentes}>
-                🔄 Refazer o que falta
+              <button className="btn ghost sm" onClick={() => void regenerarPendentes()}>
+                🔄 Refazer a fila
               </button>
               <button className="btn ghost sm" onClick={() => void regenerate()}>♻️ Refazer tudo</button>
             </>
@@ -727,21 +909,98 @@ function PlayDetail({
         </div>
       </div>
 
-      <RoundBoard
-        rounds={rounds}
-        session={session}
-        editable={canEdit && !finished}
-        onScore={setScore}
-        ocupadasFora={ocupadasFora}
-        ehAProxima={ehAProxima}
-        onLiberar={liberarQuadra}
-        onTrocar={trocar}
-        onIniciar={iniciar}
-        onCancelarInicio={cancelarInicio}
-        inicioDe={inicioDe}
+      {grupos && grupos.length > 1 && (
+        <div className="card">
+          <div className="section-title">🅰️ Grupos</div>
+          <div className="stack">
+            {grupos.map((g, i) => (
+              <div key={i} className="grupo-box">
+                <div className="grupo-nome">Grupo {i + 1} · {g.length} meninas</div>
+                <div className="tiny">{g.map(nameOf).join(' · ')}</div>
+              </div>
+            ))}
+          </div>
+          <p className="tiny muted" style={{ marginBottom: 0 }}>
+            Cada grupo é um rodízio próprio, mas os pontos são individuais e o ranking do dia é um só.
+          </p>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="section-title">🏐 Quadras agora</div>
+        {matches.length === 0 ? (
+          <Empty>Nenhuma partida gerada.</Empty>
+        ) : (
+          quadras.map((q) => {
+            const atual = emQuadra.get(q)
+            const proxima = proximas.get(q)
+            const m = atual ?? proxima
+            if (!m) {
+              return (
+                <QuadraEsperando
+                  key={q}
+                  quadra={q}
+                  restam={pendentes.length}
+                  livres={livresAgora}
+                  editable={editable}
+                  onMontar={() => {
+                    const alvo = pendentes[0]
+                    if (alvo) liberarQuadra(alvo)
+                  }}
+                />
+              )
+            }
+            return (
+              <MatchCard
+                key={m.id}
+                match={m}
+                quadra={q}
+                target={session.target}
+                editable={editable}
+                iniciada={!!atual}
+                inicio={inicioDe(m)}
+                ocupadas={ocupadasFora(m)}
+                jogando={ocupadas}
+                grupo={grupoDe.get(m.team_a[0])}
+                totalGrupos={grupos?.length ?? 1}
+                repetida={duplasRepetidas.has(m.id)}
+                espera={espera}
+                onScore={setScore}
+                onIniciar={() => iniciar(m, q)}
+                onCancelarInicio={() => cancelarInicio(m)}
+                onTrocar={(sai, entra) => trocar(m, sai, entra)}
+                onTrocarPartida={pendentes.length > 1 ? () => setEscolhendo(q) : undefined}
+                jogadorasDoPlay={session.player_ids}
+              />
+            )
+          })
+        )}
+      </div>
+
+      <ListaDePartidas
+        titulo="⏭️ Próximas na fila"
+        vazio="Nada na fila."
+        partidas={pendentes.filter((m) => ![...proximas.values()].some((p) => p.id === m.id))}
+        grupoDe={grupoDe}
+        totalGrupos={grupos?.length ?? 1}
+        repetidas={duplasRepetidas}
+        emQuadra={ocupadas}
       />
 
-      {canEdit && !finished && (
+      <ListaDePartidas
+        titulo={`✅ Já jogadas (${jogadas.length})`}
+        vazio="Nenhum placar lançado ainda."
+        partidas={[...jogadas].reverse()}
+        grupoDe={grupoDe}
+        totalGrupos={grupos?.length ?? 1}
+        repetidas={duplasRepetidas}
+        emQuadra={ocupadas}
+        target={session.target}
+        editable={editable}
+        onLimparPlacar={(m) => setScore(m, null, null)}
+      />
+
+      {editable && (
         <button className="btn teal block" onClick={() => void finish()}>
           ✅ Finalizar o play e somar os pontos
         </button>
@@ -754,14 +1013,30 @@ function PlayDetail({
             onNext({
               title: session.title,
               courts: session.courts,
-              rounds: session.rounds,
               target: session.target,
               player_ids: session.player_ids,
+              format: session.format,
             })
           }
         >
           ➡️ Gerar as duplas do próximo play
         </button>
+      )}
+
+      {escolhendo !== null && (
+        <EscolherPartida
+          quadra={escolhendo}
+          partidas={pendentes}
+          ocupadas={ocupadas}
+          espera={espera}
+          grupoDe={grupoDe}
+          totalGrupos={grupos?.length ?? 1}
+          onEscolher={(m) => {
+            setManuais((prev) => ({ ...prev, [escolhendo]: m.id }))
+            setEscolhendo(null)
+          }}
+          onClose={() => setEscolhendo(null)}
+        />
       )}
 
       {arte && (
@@ -818,232 +1093,185 @@ function PlayDetail({
   )
 }
 
-function RoundBoard({
-  rounds,
-  session,
+/* ------------------------------------------------------------ partidas */
+
+/**
+ * Quadra vaga sem partida possivel: todas as partidas que faltam pegam
+ * alguem que ja esta em quadra ou escalada para outra. Em vez de sugerir a
+ * mesma menina em duas quadras, a tela diz o que esta travando e oferece
+ * montar uma partida com quem esta livre.
+ */
+function QuadraEsperando({
+  quadra,
+  restam,
+  livres,
   editable,
-  onScore,
-  ocupadasFora,
-  ehAProxima,
-  onLiberar,
-  onTrocar,
-  onIniciar,
-  onCancelarInicio,
-  inicioDe,
+  onMontar,
 }: {
-  rounds: [number, Match[]][]
-  session: PlaySession
+  quadra: number
+  restam: number
+  livres: string[]
   editable: boolean
-  onScore: (m: Match, a: number | null, b: number | null) => void
-  ocupadasFora: (m: Match) => Set<string>
-  ehAProxima: (m: Match) => boolean
-  onLiberar: (m: Match) => void
-  onTrocar: (m: Match, sai: string, entra: string) => void
-  onIniciar: (m: Match) => void
-  onCancelarInicio: (m: Match) => void
-  inicioDe: (m: Match) => string | null
+  onMontar: () => void
 }) {
   const { nameOf } = useStore()
-  // primeira rodada que ainda falta placar; se acabou tudo, fica na ultima
-  const firstOpen =
-    rounds.find(([, ms]) => ms.some((m) => !isPlayed(m)))?.[0] ?? rounds[rounds.length - 1]?.[0] ?? 1
-  const [round, setRound] = useState(firstOpen)
-  const [all, setAll] = useState(false)
+  return (
+    <div className="match vazia">
+      <div className="match-head"><span>Quadra {quadra}</span><span>livre</span></div>
+      {restam === 0 ? (
+        <div className="tiny muted">
+          Acabou a fila — todas as partidas já foram jogadas ou estão em quadra.
+        </div>
+      ) : (
+        <>
+          <div className="tiny muted">
+            Nenhuma das {restam} partidas que faltam tem quatro meninas livres agora.
+          </div>
+          {livres.length > 0 ? (
+            <>
+              <div className="tiny" style={{ marginTop: 6 }}>
+                <strong>Livres agora:</strong> {livres.map(nameOf).join(', ')}
+              </div>
+              {editable && livres.length >= 1 && (
+                <button className="btn pink sm block" style={{ marginTop: 8 }} onClick={onMontar}>
+                  🔄 Montar partida com quem está livre
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="tiny muted" style={{ marginTop: 6 }}>
+              Todas as meninas estão em quadra. Assim que um placar for lançado, esta quadra recebe
+              a próxima partida.
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 
-  // ao abrir/atualizar, pula para a primeira rodada que ainda falta placar
-  useEffect(() => setRound(firstOpen), [firstOpen])
+/** Livre · escalada para a próxima de outra quadra · jogando agora. */
+function Situacao({
+  id,
+  ocupadas,
+  jogando,
+}: {
+  id: string
+  ocupadas: Set<string>
+  jogando: Set<string>
+}) {
+  const texto = jogando.has(id) ? 'em quadra' : ocupadas.has(id) ? 'próxima partida' : 'livre'
+  const cor = jogando.has(id) ? 'var(--orange)' : ocupadas.has(id) ? 'var(--purple)' : 'var(--teal)'
+  return (
+    <span className="tiny nowrap" style={{ fontWeight: 800, color: cor }}>{texto}</span>
+  )
+}
 
-  if (rounds.length === 0) return null
-  const idx = rounds.findIndex(([r]) => r === round)
-  const shown = all ? rounds : rounds.slice(Math.max(idx, 0), Math.max(idx, 0) + 1)
+function GrupoTag({ grupo, total }: { grupo?: number; total: number }) {
+  if (!grupo || total <= 1) return null
+  return <span className={`grupo-tag g${((grupo - 1) % 4) + 1}`}>G{grupo}</span>
+}
 
+function Duo({ ids, ocupadas }: { ids: [string, string]; ocupadas?: Set<string> }) {
+  const { nameOf, playerById } = useStore()
   return (
     <>
-      <div className="card round-nav">
-        <div className="row spread" style={{ marginBottom: 8 }}>
-          <strong style={{ fontSize: 15 }}>{all ? 'Todas as rodadas' : `Rodada ${round} de ${rounds.length}`}</strong>
-          <button className="btn ghost sm" onClick={() => setAll((v) => !v)}>
-            {all ? 'Ver uma por vez' : 'Ver todas'}
-          </button>
-        </div>
-        {!all && (
-          <div className="row" style={{ gap: 8 }}>
-            <button className="btn ghost step" disabled={idx <= 0} onClick={() => setRound(rounds[idx - 1][0])}>‹</button>
-            <div className="chips-scroll grow">
-              {rounds.map(([r, ms]) => {
-                const done = ms.every(isPlayed)
-                return (
-                  <button
-                    key={r}
-                    className={`round-chip${r === round ? ' on' : ''}${done ? ' done' : ''}`}
-                    onClick={() => setRound(r)}
-                  >
-                    {done ? '✓' : r}
-                  </button>
-                )
-              })}
-            </div>
-            <button className="btn ghost step" disabled={idx >= rounds.length - 1} onClick={() => setRound(rounds[idx + 1][0])}>›</button>
-          </div>
-        )}
-      </div>
-
-      {shown.map(([r, ms]) => {
-        const byes = session.player_ids.filter((p) => !ms.some((m) => [...m.team_a, ...m.team_b].includes(p)))
-        return (
-          <div className="card" key={r}>
-            {all && <div className="section-title">🔄 Rodada {r}</div>}
-            {ms.map((m) => (
-              <MatchCard
-                key={m.id}
-                match={m}
-                target={session.target}
-                editable={editable}
-                onScore={onScore}
-                ocupadas={ocupadasFora(m)}
-                proxima={ehAProxima(m)}
-                jogadorasDoPlay={session.player_ids}
-                onLiberar={() => onLiberar(m)}
-                onTrocar={(sai, entra) => onTrocar(m, sai, entra)}
-                onIniciar={() => onIniciar(m)}
-                onCancelarInicio={() => onCancelarInicio(m)}
-                inicio={inicioDe(m)}
-              />
-            ))}
-            {byes.length > 0 && <div className="tiny muted">Folga nesta rodada: {byes.map(nameOf).join(', ')}</div>}
-          </div>
-        )
-      })}
+      <Avatar player={playerById(ids[0])} size={26} />
+      <Avatar player={playerById(ids[1])} size={26} />
+      <span className="names">
+        {ids.map((id, i) => (
+          <span key={id}>
+            {i > 0 && <span className="muted"> + </span>}
+            <span className={ocupadas?.has(id) ? 'ocupada' : undefined}>
+              {nameOf(id)}
+              {ocupadas?.has(id) && ' ⏳'}
+            </span>
+          </span>
+        ))}
+      </span>
     </>
   )
 }
 
 function MatchCard({
   match,
+  quadra,
   target,
   editable,
-  onScore,
+  iniciada,
+  inicio,
   ocupadas,
-  proxima,
+  jogando,
+  grupo,
+  totalGrupos,
+  repetida,
+  espera,
   jogadorasDoPlay,
-  onLiberar,
-  onTrocar,
+  onScore,
   onIniciar,
   onCancelarInicio,
-  inicio,
+  onTrocar,
+  onTrocarPartida,
 }: {
   match: Match
+  quadra: number
   target: number
   editable: boolean
-  onScore: (m: Match, a: number | null, b: number | null) => void
+  iniciada: boolean
+  inicio: string | null
+  /** Indisponiveis: jogando agora ou ja escaladas para outra quadra. */
   ocupadas: Set<string>
-  proxima: boolean
+  /** Das indisponiveis, quem esta de fato com a partida rolando. */
+  jogando: Set<string>
+  grupo?: number
+  totalGrupos: number
+  repetida: boolean
+  espera: Map<string, number>
   jogadorasDoPlay: string[]
-  onLiberar: () => void
-  onTrocar: (sai: string, entra: string) => void
+  onScore: (m: Match, a: number | null, b: number | null) => void
   onIniciar: () => void
   onCancelarInicio: () => void
-  inicio: string | null
+  onTrocar: (sai: string, entra: string) => void
+  onTrocarPartida?: () => void
 }) {
-  const { nameOf, playerById } = useStore()
+  const { nameOf } = useStore()
   const [winner, setWinner] = useState<'a' | 'b' | null>(null)
-  const [trocando, setTrocando] = useState<string | null>(null)
-  const noTime = [...match.team_a, ...match.team_b]
-  const iniciada = !!inicio
-  const presas = proxima ? noTime.filter((id) => ocupadas.has(id)) : []
-  const played = isPlayed(match)
-  const [pa, pb] = played ? matchPoints(match.score_a as number, match.score_b as number) : [0, 0]
-  const aWin = played && (match.score_a as number) > (match.score_b as number)
-
-  const nomeJogadora = (id: string) =>
-    editable ? (
-      <button
-        type="button"
-        className={`nome-troca${ocupadas.has(id) ? ' ocupada' : ''}`}
-        onClick={(e) => { e.stopPropagation(); setTrocando(id) }}
-        title="tocar para trocar de jogadora"
-      >
-        {nameOf(id)}
-        {ocupadas.has(id) && ' ⏳'}
-      </button>
-    ) : (
-      <>{nameOf(id)}</>
-    )
-
-  const duo = (ids: [string, string]) => (
-    <>
-      <Avatar player={playerById(ids[0])} size={26} />
-      <Avatar player={playerById(ids[1])} size={26} />
-      <span className="names ellipsis">
-        {nomeJogadora(ids[0])} <span className="muted">+</span> {nomeJogadora(ids[1])}
-      </span>
-    </>
-  )
+  const [trocando, setTrocando] = useState(false)
+  const noTime = jogadorasDaPartida(match)
 
   const modalTroca = trocando && (
-    <TrocarJogadora
-      sai={trocando}
+    <TrocarJogadoras
       noTime={noTime}
       ocupadas={ocupadas}
+      jogando={jogando}
+      espera={espera}
       jogadorasDoPlay={jogadorasDoPlay}
-      onEscolher={(entra) => { onTrocar(trocando, entra); setTrocando(null) }}
-      onClose={() => setTrocando(null)}
+      onTrocar={(sai, entra) => { onTrocar(sai, entra); setTrocando(false) }}
+      onClose={() => setTrocando(false)}
     />
   )
 
-  // ---- ja tem placar: mostra o resultado ----
-  if (played) {
-    return (
-      <div className="match done">
-        <div className="match-head">
-          <span>Quadra {match.court}</span>
-          <span>{editable ? '' : 'placar'}</span>
-        </div>
-        <div className={`team ${aWin ? 'win' : 'lose'}`}>
-          {duo(match.team_a)}
-          {pa > 0 && <span className="pts-tag">+{pa}</span>}
-          <span className="score-box">{match.score_a}</span>
-        </div>
-        <div className={`team ${aWin ? 'lose' : 'win'}`}>
-          {duo(match.team_b)}
-          {pb > 0 && <span className="pts-tag">+{pb}</span>}
-          <span className="score-box">{match.score_b}</span>
-        </div>
-        {editable && (
-          <button className="btn ghost sm" style={{ marginTop: 8 }} onClick={() => { setWinner(null); onScore(match, null, null) }}>
-            ✏️ Trocar placar
-          </button>
-        )}
-        {modalTroca}
-      </div>
-    )
-  }
-
-  // ---- so leitura e ainda sem placar ----
-  if (!editable) {
-    return (
-      <div className="match">
-        <div className="match-head">
-          <span>Quadra {match.court}</span>
-          <span>{iniciada ? '🟢 em quadra' : 'sem placar'}</span>
-        </div>
-        <div className="team">{duo(match.team_a)}</div>
-        <div className="vs">X</div>
-        <div className="team">{duo(match.team_b)}</div>
-      </div>
-    )
-  }
-
-  /** Aviso de quadra parada esperando quem ainda esta jogando. */
-  const avisoPresas = presas.length > 0 && (
-    <div className="travada">
-      ⏳ <strong>{presas.map(nameOf).join(', ')}</strong>{' '}
-      {presas.length === 1 ? 'ainda está jogando' : 'ainda estão jogando'} em outra quadra.
-      <button className="btn pink sm block" style={{ marginTop: 8 }} onClick={onLiberar}>
-        🔄 Chamar quem está livre
-      </button>
+  const cabecalho = (
+    <div className="match-head">
+      <span>
+        Quadra {quadra} <GrupoTag grupo={grupo} total={totalGrupos} />
+        {repetida && <span className="repetida-tag" title="dupla que joga uma segunda vez">🔁</span>}
+      </span>
+      <span>{iniciada ? '🟢 em quadra' : editable ? 'próxima' : 'sem placar'}</span>
     </div>
   )
+
+  // ---- so leitura ----
+  if (!editable) {
+    return (
+      <div className={`match${iniciada ? ' em-quadra' : ''}`}>
+        {cabecalho}
+        <div className="team"><Duo ids={match.team_a} /></div>
+        <div className="vs">X</div>
+        <div className="team"><Duo ids={match.team_b} /></div>
+      </div>
+    )
+  }
 
   // ---- passo 2: quantos games a perdedora fez ----
   if (winner) {
@@ -1051,10 +1279,13 @@ function MatchCard({
     return (
       <div className="match live">
         <div className="match-head">
-          <span>Quadra {match.court}</span>
+          <span>Quadra {quadra}</span>
           <button className="linkish" onClick={() => setWinner(null)}>‹ voltar</button>
         </div>
-        <div className="team win">{duo(winner === 'a' ? match.team_a : match.team_b)}<span className="score-box">{target}</span></div>
+        <div className="team win">
+          <Duo ids={winner === 'a' ? match.team_a : match.team_b} />
+          <span className="score-box">{target}</span>
+        </div>
         <div className="ask">Quantos games <strong>{nameOf(loserIds[0])} + {nameOf(loserIds[1])}</strong> fez?</div>
         <div className="games-row">
           {Array.from({ length: target }, (_, n) => (
@@ -1071,19 +1302,15 @@ function MatchCard({
             </button>
           ))}
         </div>
-        {modalTroca}
       </div>
     )
   }
 
   // ---- passo 1: quem venceu ----
   return (
-    <div className={`match live${presas.length ? ' travada-borda' : ''}${iniciada ? ' em-quadra' : ''}`}>
-      <div className="match-head">
-        <span>Quadra {match.court}</span>
-        <span>{iniciada ? '🟢 em quadra' : 'quem venceu?'}</span>
-      </div>
-      {avisoPresas}
+    <div className={`match live${iniciada ? ' em-quadra' : ''}`}>
+      {cabecalho}
+
       {iniciada ? (
         <div className="row spread" style={{ marginBottom: 8 }}>
           <span className="tiny" style={{ fontWeight: 800, color: 'var(--teal)' }}>
@@ -1096,16 +1323,111 @@ function MatchCard({
           ▶️ Partida iniciada
         </button>
       )}
+
       <button className="pick-team" onClick={() => setWinner('a')}>
-        {duo(match.team_a)}
+        <Duo ids={match.team_a} ocupadas={iniciada ? undefined : ocupadas} />
         <span className="pick-tag">venceu</span>
       </button>
       <div className="vs">X</div>
       <button className="pick-team" onClick={() => setWinner('b')}>
-        {duo(match.team_b)}
+        <Duo ids={match.team_b} ocupadas={iniciada ? undefined : ocupadas} />
         <span className="pick-tag">venceu</span>
       </button>
+
+      <div className="row" style={{ gap: 8, marginTop: 8 }}>
+        <button className="btn ghost sm grow" onClick={() => setTrocando(true)}>🔄 Trocar jogadora</button>
+        {!iniciada && onTrocarPartida && (
+          <button className="btn ghost sm grow" onClick={onTrocarPartida}>⏭️ Outra partida</button>
+        )}
+      </div>
       {modalTroca}
+    </div>
+  )
+}
+
+/** Lista compacta de partidas (fila e já jogadas), colapsável. */
+function ListaDePartidas({
+  titulo,
+  vazio,
+  partidas,
+  grupoDe,
+  totalGrupos,
+  repetidas,
+  emQuadra,
+  target,
+  editable,
+  onLimparPlacar,
+}: {
+  titulo: string
+  vazio: string
+  partidas: Match[]
+  grupoDe: Map<string, number>
+  totalGrupos: number
+  repetidas: Set<string>
+  emQuadra: Set<string>
+  target?: number
+  editable?: boolean
+  onLimparPlacar?: (m: Match) => void
+}) {
+  const { nameOf } = useStore()
+  const [aberta, setAberta] = useState(false)
+  const LIMITE = 5
+  const visiveis = aberta ? partidas : partidas.slice(0, LIMITE)
+
+  return (
+    <div className="card">
+      <div className="row spread">
+        <div className="section-title" style={{ margin: 0 }}>{titulo}</div>
+        {partidas.length > LIMITE && (
+          <button className="btn ghost sm" onClick={() => setAberta((v) => !v)}>
+            {aberta ? 'Ver menos' : `Ver todas (${partidas.length})`}
+          </button>
+        )}
+      </div>
+      {partidas.length === 0 ? (
+        <Empty>{vazio}</Empty>
+      ) : (
+        <div className="stack" style={{ marginTop: 10 }}>
+          {visiveis.map((m) => {
+            const jogada = isPlayed(m)
+            const [pa, pb] = jogada ? matchPoints(m.score_a as number, m.score_b as number) : [0, 0]
+            const aWin = jogada && (m.score_a as number) > (m.score_b as number)
+            return (
+              <div key={m.id} className="fila-linha">
+                <span className="fila-num">
+                  {m.round}
+                  <GrupoTag grupo={grupoDe.get(m.team_a[0])} total={totalGrupos} />
+                </span>
+                <span className="grow" style={{ minWidth: 0 }}>
+                  <span className={`fila-time${jogada && aWin ? ' venceu' : ''}`}>
+                    {nameOf(m.team_a[0])} + {nameOf(m.team_a[1])}
+                    {jogada && <b> {m.score_a}</b>}
+                    {jogada && pa > 0 && <i> +{pa}</i>}
+                  </span>
+                  <span className={`fila-time${jogada && !aWin ? ' venceu' : ''}`}>
+                    {nameOf(m.team_b[0])} + {nameOf(m.team_b[1])}
+                    {jogada && <b> {m.score_b}</b>}
+                    {jogada && pb > 0 && <i> +{pb}</i>}
+                  </span>
+                  {repetidas.has(m.id) && (
+                    <span className="tiny muted">🔁 dupla repetida (sobra do rodízio)</span>
+                  )}
+                  {!jogada && jogadorasDaPartida(m).some((id) => emQuadra.has(id)) && (
+                    <span className="tiny muted">⏳ tem gente desta partida em quadra agora</span>
+                  )}
+                </span>
+                {jogada && editable && onLimparPlacar && (
+                  <button
+                    className="btn ghost sm"
+                    title={`partida até ${target} pontos`}
+                    onClick={() => onLimparPlacar(m)}
+                  >✏️</button>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -1116,48 +1438,134 @@ function horaCurta(iso: string): string {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 }
 
-/** Escolhe quem entra no lugar de alguem, mostrando quem esta livre. */
-function TrocarJogadora({
-  sai,
+/**
+ * Troca de jogadora em duas etapas, com linhas grandes.
+ * Antes era um toque no nome dentro da partida -- no celular, com nome
+ * comprido, o nome era cortado e nao dava para acertar o dedo nele.
+ */
+function TrocarJogadoras({
   noTime,
   ocupadas,
+  jogando,
+  espera,
   jogadorasDoPlay,
-  onEscolher,
+  onTrocar,
   onClose,
 }: {
-  sai: string
   noTime: string[]
   ocupadas: Set<string>
+  jogando: Set<string>
+  espera: Map<string, number>
   jogadorasDoPlay: string[]
-  onEscolher: (entra: string) => void
+  onTrocar: (sai: string, entra: string) => void
   onClose: () => void
 }) {
   const { nameOf, playerById } = useStore()
+  const [sai, setSai] = useState<string | null>(null)
+
   const candidatas = jogadorasDoPlay
     .filter((id) => !noTime.includes(id))
     .sort((a, b) => {
       const oa = ocupadas.has(a) ? 1 : 0
       const ob = ocupadas.has(b) ? 1 : 0
-      return oa - ob || nameOf(a).localeCompare(nameOf(b), 'pt-BR')
+      // livres primeiro, e entre elas quem esta fora ha mais tempo
+      return oa - ob || (espera.get(a) ?? 0) - (espera.get(b) ?? 0)
     })
+
+  if (!sai) {
+    return (
+      <Modal title="Quem sai da partida?" onClose={onClose}>
+        <div className="stack">
+          {noTime.map((id) => (
+            <button key={id} className="duo-row" onClick={() => setSai(id)}>
+              <Avatar player={playerById(id)} size={38} />
+              <span className="grow ellipsis" style={{ fontWeight: 700 }}>{nameOf(id)}</span>
+              {ocupadas.has(id) && <Situacao id={id} ocupadas={ocupadas} jogando={jogando} />}
+            </button>
+          ))}
+        </div>
+      </Modal>
+    )
+  }
 
   return (
     <Modal title={`Quem entra no lugar de ${nameOf(sai)}?`} onClose={onClose}>
+      <button className="btn ghost sm" style={{ marginBottom: 10 }} onClick={() => setSai(null)}>
+        ‹ escolher outra
+      </button>
       {candidatas.length === 0 ? (
         <Empty icon="👯">Todas as jogadoras já estão nesta partida.</Empty>
       ) : (
         <div className="stack">
           {candidatas.map((id) => (
-            <button key={id} className="duo-row" onClick={() => onEscolher(id)}>
-              <Avatar player={playerById(id)} size={34} />
+            <button key={id} className="duo-row" onClick={() => onTrocar(sai, id)}>
+              <Avatar player={playerById(id)} size={38} />
               <span className="grow ellipsis" style={{ fontWeight: 700 }}>{nameOf(id)}</span>
-              <span className="tiny nowrap" style={{ fontWeight: 800, color: ocupadas.has(id) ? 'var(--orange)' : 'var(--teal)' }}>
-                {ocupadas.has(id) ? 'em quadra' : 'livre'}
-              </span>
+              <Situacao id={id} ocupadas={ocupadas} jogando={jogando} />
             </button>
           ))}
         </div>
       )}
+    </Modal>
+  )
+}
+
+/** Escolher na mao qual partida da fila entra nesta quadra. */
+function EscolherPartida({
+  quadra,
+  partidas,
+  ocupadas,
+  espera,
+  grupoDe,
+  totalGrupos,
+  onEscolher,
+  onClose,
+}: {
+  quadra: number
+  partidas: Match[]
+  ocupadas: Set<string>
+  espera: Map<string, number>
+  grupoDe: Map<string, number>
+  totalGrupos: number
+  onEscolher: (m: Match) => void
+  onClose: () => void
+}) {
+  const { nameOf } = useStore()
+  const ordenadas = [...partidas].sort((a, b) => {
+    const la = jogadorasDaPartida(a).every((id) => !ocupadas.has(id)) ? 0 : 1
+    const lb = jogadorasDaPartida(b).every((id) => !ocupadas.has(id)) ? 0 : 1
+    const ea = jogadorasDaPartida(a).reduce((t, id) => t + (espera.get(id) ?? 0), 0)
+    const eb = jogadorasDaPartida(b).reduce((t, id) => t + (espera.get(id) ?? 0), 0)
+    return la - lb || ea - eb || a.round - b.round
+  })
+
+  return (
+    <Modal title={`Qual partida entra na quadra ${quadra}?`} onClose={onClose}>
+      <p className="tiny muted" style={{ marginTop: 0 }}>
+        As de cima são as que têm as quatro meninas livres e esperando há mais tempo.
+      </p>
+      <div className="stack">
+        {ordenadas.slice(0, 30).map((m) => {
+          const presas = jogadorasDaPartida(m).filter((id) => ocupadas.has(id))
+          return (
+            <button key={m.id} className="duo-row" onClick={() => onEscolher(m)} disabled={presas.length > 0}>
+              <span className="fila-num">
+                {m.round}
+                <GrupoTag grupo={grupoDe.get(m.team_a[0])} total={totalGrupos} />
+              </span>
+              <span className="grow" style={{ minWidth: 0 }}>
+                <span className="fila-time">{nameOf(m.team_a[0])} + {nameOf(m.team_a[1])}</span>
+                <span className="fila-time">{nameOf(m.team_b[0])} + {nameOf(m.team_b[1])}</span>
+                {presas.length > 0 && (
+                  <span className="tiny" style={{ color: 'var(--orange)' }}>
+                    ⏳ {presas.map(nameOf).join(', ')} em quadra
+                  </span>
+                )}
+              </span>
+            </button>
+          )
+        })}
+      </div>
     </Modal>
   )
 }

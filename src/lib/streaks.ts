@@ -14,6 +14,11 @@ import { monthOf, todayISO } from './types'
  * O status vale pontos uma unica vez: no fechamento do mes, se ela ainda o
  * tiver, escolhe USAR (os pontos entram naquele mes e o status zera) ou
  * PRESERVAR (nao pontua, o status segue e cresce, e ela ganha a vida).
+ *
+ * O mes fecha de tres jeitos: quando aparece um play de um mes seguinte,
+ * quando o calendario passa do mes, ou quando a organizadora aperta
+ * "finalizar o mes" (`MonthClosure`). O botao existe porque a premiacao
+ * acontece na ultima sexta, antes de o calendario virar.
  */
 
 export type StreakLevel = { emoji: string; title: string }
@@ -93,6 +98,12 @@ export type Streaks = {
   podiumOf: Map<string, string[]>
   decisions: MonthDecision[]
   closedMonths: string[]
+}
+
+/** O mes ja foi fechado (na mao, ou porque o calendario passou dele)? */
+export function mesFechado(data: AppData, mes: string): boolean {
+  if (data.closures.some((c) => c.month === mes)) return true
+  return mes < monthOf(todayISO())
 }
 
 /** A escolha guardada no banco usa os nomes antigos; aqui viram usar/preservar. */
@@ -202,9 +213,12 @@ export function computeStreaks(data: AppData): Streaks {
     }
   }
 
-  // o mes fecha quando o calendario vira, sem esperar a proxima sexta:
-  // a premiacao acontece na ultima semana do mes
-  if (mesCorrente && mesCorrente < monthOf(todayISO())) fecharMes(mesCorrente)
+  // O ultimo mes fecha quando a organizadora aperta "finalizar o mes" ou,
+  // como rede de seguranca, quando o calendario ja passou dele.
+  const fechadoNaMao = new Set(data.closures.map((c) => c.month))
+  if (mesCorrente && (fechadoNaMao.has(mesCorrente) || mesCorrente < monthOf(todayISO()))) {
+    fecharMes(mesCorrente)
+  }
 
   return { awards, steps, current, lives, best, winnersOf, podiumOf, decisions, closedMonths }
 }

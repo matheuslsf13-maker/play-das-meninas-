@@ -4,7 +4,7 @@ import { loadCache, loadQueue, saveCache, saveQueue, type WriteOp } from '../dat
 import type { Repo } from '../data/repo'
 import { supabaseRepo } from '../data/supabaseRepo'
 import { hasSupabase, supabase } from './supabase'
-import type { AppData, Match, PlaySession, Player, StreakChoice } from './types'
+import type { AppData, Match, MonthClosure, PlaySession, Player, StreakChoice } from './types'
 import { emptyData, uid } from './types'
 
 export type SyncState = 'saved' | 'saving' | 'pending'
@@ -27,6 +27,9 @@ type Ctx = {
   saveMatches: (ms: Match[]) => void
   replaceSessionMatches: (sessionId: string, ms: Match[]) => void
   saveChoice: (choice: StreakChoice) => void
+  /** Fecha o mes na mao (o botao "finalizar o mes"). */
+  saveClosure: (closure: MonthClosure) => void
+  deleteClosure: (month: string) => void
   /** Junta duas jogadoras numa so, preservando partidas, pontos e sequencia. */
   mergePlayers: (fromId: string, intoId: string) => void
   signIn: (email: string, password: string) => Promise<void>
@@ -64,6 +67,10 @@ function applyLocally(d: AppData, op: WriteOp): AppData {
       }
     case 'saveChoice':
       return { ...d, choices: upsert(d.choices, op.choice) }
+    case 'saveClosure':
+      return { ...d, closures: upsert(d.closures, op.closure) }
+    case 'deleteClosure':
+      return { ...d, closures: d.closures.filter((c) => c.month !== op.month) }
     case 'mergePlayers': {
       let matches = d.matches
       for (const m of op.matches) matches = upsert(matches, m)
@@ -228,6 +235,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       replaceSessionMatches: (sessionId, matches) =>
         push({ id: uid(), type: 'replaceSessionMatches', sessionId, matches }),
       saveChoice: (choice) => push({ id: uid(), type: 'saveChoice', choice }),
+      saveClosure: (closure) => push({ id: uid(), type: 'saveClosure', closure }),
+      deleteClosure: (month) => push({ id: uid(), type: 'deleteClosure', month }),
       mergePlayers: (fromId, intoId) => {
         const troca = (id: string) => (id === fromId ? intoId : id)
         // partidas: a duplicada vira a jogadora que fica
@@ -278,6 +287,10 @@ async function runOp(repo: Repo, op: WriteOp): Promise<void> {
       return repo.saveMatches(op.matches)
     case 'saveChoice':
       return repo.saveChoice(op.choice)
+    case 'saveClosure':
+      return repo.saveClosure(op.closure)
+    case 'deleteClosure':
+      return repo.deleteClosure(op.month)
     case 'mergePlayers':
       await repo.saveMatches(op.matches)
       for (const s of op.sessions) await repo.saveSession(s)

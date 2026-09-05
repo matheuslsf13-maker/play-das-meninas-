@@ -1,4 +1,4 @@
-import type { AppData, Match, PlaySession, Player, StreakChoice } from '../lib/types'
+import type { AppData, Match, MonthClosure, PlaySession, Player, StreakChoice } from '../lib/types'
 import { emptyData } from '../lib/types'
 import type { Repo } from './repo'
 
@@ -14,6 +14,7 @@ function read(): AppData {
       sessions: parsed.sessions ?? [],
       matches: parsed.matches ?? [],
       choices: parsed.choices ?? [],
+      closures: parsed.closures ?? [],
     }
   } catch {
     return emptyData()
@@ -72,6 +73,18 @@ export const localRepo: Repo = {
     const i = d.choices.findIndex((x) => x.id === choice.id)
     if (i >= 0) d.choices[i] = choice
     else d.choices.push(choice)
+    write(d)
+  },
+  async saveClosure(closure: MonthClosure) {
+    const d = read()
+    const i = d.closures.findIndex((x) => x.id === closure.id)
+    if (i >= 0) d.closures[i] = closure
+    else d.closures.push(closure)
+    write(d)
+  },
+  async deleteClosure(month: string) {
+    const d = read()
+    d.closures = d.closures.filter((c) => c.month !== month)
     write(d)
   },
   async deleteMatchesOfSession(sessionId: string) {

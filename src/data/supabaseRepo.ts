@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase'
-import type { AppData, Match, PlaySession, Player, StreakChoice } from '../lib/types'
+import type { AppData, Match, MonthClosure, PlaySession, Player, StreakChoice } from '../lib/types'
 import type { Repo } from './repo'
 
 function client() {
@@ -11,22 +11,25 @@ export const supabaseRepo: Repo = {
   kind: 'supabase',
   async load(): Promise<AppData> {
     const sb = client()
-    const [players, sessions, matches, choices] = await Promise.all([
+    const [players, sessions, matches, choices, closures] = await Promise.all([
       sb.from('players').select('*').order('name'),
       sb.from('sessions').select('*').order('date', { ascending: false }),
       sb.from('matches').select('*'),
       sb.from('streak_choices').select('*'),
+      sb.from('month_closures').select('*'),
     ])
     const err = players.error || sessions.error || matches.error
     if (err) throw err
-    // a tabela de escolhas e mais nova: se ainda nao foi criada, o app segue
-    // funcionando sem ela em vez de nao abrir
+    // estas tabelas sao mais novas: se ainda nao foram criadas, o app segue
+    // funcionando sem elas em vez de nao abrir
     if (choices.error) console.warn('streak_choices indisponível:', choices.error.message)
+    if (closures.error) console.warn('month_closures indisponível:', closures.error.message)
     return {
       players: (players.data ?? []) as Player[],
       sessions: (sessions.data ?? []) as PlaySession[],
       matches: (matches.data ?? []) as Match[],
       choices: (choices.data ?? []) as StreakChoice[],
+      closures: (closures.data ?? []) as MonthClosure[],
     }
   },
   async savePlayer(p: Player) {
@@ -39,7 +42,16 @@ export const supabaseRepo: Repo = {
   },
   async saveSession(s: PlaySession) {
     const { error } = await client().from('sessions').upsert(s)
-    if (error) throw error
+    if (!error) return
+    // banco ainda sem as colunas do modo em grupos (script 05 nao rodou):
+    // salva o resto, que e o que o play precisa para funcionar
+    if (/format|groups/.test(error.message ?? '')) {
+      const { format: _f, groups: _g, ...resto } = s
+      const retry = await client().from('sessions').upsert(resto)
+      if (retry.error) throw retry.error
+      return
+    }
+    throw error
   },
   async deleteSession(id: string) {
     const sb = client()
@@ -52,10 +64,11 @@ export const supabaseRepo: Repo = {
     if (ms.length === 0) return
     const { error } = await client().from('matches').upsert(ms)
     if (!error) return
-    // banco ainda sem a coluna started_at (script 04 nao rodou): salva o resto
-    if (/started_at/.test(error.message ?? '')) {
-      const semInicio = ms.map(({ started_at: _ignora, ...resto }) => resto)
-      const retry = await client().from('matches').upsert(semInicio)
+    // banco ainda sem as colunas de horario (scripts 04/05 nao rodaram):
+    // salva o resto, que o app compensa com a copia local
+    if (/started_at|ended_at/.test(error.message ?? '')) {
+      const semHorarios = ms.map(({ started_at: _i, ended_at: _f, ...resto }) => resto)
+      const retry = await client().from('matches').upsert(semHorarios)
       if (retry.error) throw retry.error
       return
     }
@@ -78,6 +91,14 @@ export const supabaseRepo: Repo = {
     const { error } = await client().from('streak_choices').upsert(choice)
     if (error) throw error
   },
+  async saveClosure(closure: MonthClosure) {
+    const { error } = await client().from('month_closures').upsert(closure)
+    if (error) throw error
+  },
+  async deleteClosure(month: string) {
+    const { error } = await client().from('month_closures').delete().eq('month', month)
+    if (error) throw error
+  },
   async deletePhoto(url: string) {
     const marca = '/storage/v1/object/public/photos/'
     const i = url.indexOf(marca)
@@ -94,6 +115,7 @@ export const supabaseRepo: Repo = {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, cb)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, cb)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'streak_choices' }, cb)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'month_closures' }, cb)
       .subscribe()
     return () => {
       void sb.removeChannel(ch)

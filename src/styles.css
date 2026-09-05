@@ -747,3 +747,86 @@ textarea.input { line-height: 1.45; }
   border-color: var(--teal);
   background: #f2fbfa;
 }
+
+/* ---------- fila de partidas (o play nao tem mais rodadas) ---------- */
+.match.vazia { background: #fbf8f4; border-style: dashed; }
+
+/* etiqueta de grupo, quando o play e dividido por nivel */
+.grupo-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #fff;
+  vertical-align: middle;
+}
+.grupo-tag.g1 { background: var(--pink); }
+.grupo-tag.g2 { background: var(--purple); }
+.grupo-tag.g3 { background: var(--teal); }
+.grupo-tag.g4 { background: var(--orange); }
+.repetida-tag { margin-left: 6px; }
+
+.grupo-box {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--pink);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #fbf8f4;
+}
+.grupo-nome {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--pink);
+  margin-bottom: 2px;
+}
+.grupo-box + .grupo-box .grupo-nome { color: var(--purple); }
+.grupo-box + .grupo-box { border-left-color: var(--purple); }
+
+/* linha compacta da fila e das partidas ja jogadas */
+.fila-linha {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--line);
+}
+.fila-linha:last-child { border-bottom: 0; padding-bottom: 0; }
+.fila-num {
+  flex: none;
+  min-width: 30px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.fila-time {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.fila-time.venceu { font-weight: 800; color: var(--teal); }
+.fila-time b { color: var(--navy); }
+.fila-time i { font-style: normal; font-size: 11px; font-weight: 800; color: var(--pink); }
+
+/* nomes das duplas na partida: quebram em vez de serem cortados, senao no
+   celular nao da para ler (nem tocar) quem tem nome comprido */
+.team .names,
+.pick-team .names { overflow-wrap: anywhere; }
+
+/* o selo "venceu" encolhe para sobrar largura para os nomes */
+.pick-tag { padding: 5px 9px; font-size: 11px; letter-spacing: .2px; }
+.pick-team { gap: 6px; padding: 10px; }
+.pick-team .names { font-size: 14px; }
+.names .ocupada { color: var(--orange); font-weight: 800; }
+
+/* finalizar o mes na mao */
+.fechamento {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
