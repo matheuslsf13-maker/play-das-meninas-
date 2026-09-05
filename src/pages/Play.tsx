@@ -11,6 +11,7 @@ import {
 } from '../lib/pairing'
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
+import { loadInicios, saveInicios, type Inicios } from '../lib/emQuadra'
 import { buildHistory, computeStats, pairKey, playedMatches, ratings, rankPlayers } from '../lib/stats'
 import { buildDayPoster } from '../lib/poster'
 import { computeStreaks, streakLevel } from '../lib/streaks'
@@ -433,17 +434,53 @@ function PlayDetail({
   const award = passos[0]
   const awardLevel = award ? streakLevel(award.streak) : null
 
+  // inicios guardados no proprio celular, para nao dependerem da volta do banco
+  const [inicios, setInicios] = useState<Inicios>(() => loadInicios())
+
+  function marcarInicio(id: string, quando: string | null) {
+    setInicios((prev) => {
+      const next = { ...prev }
+      if (quando) next[id] = quando
+      else delete next[id]
+      saveInicios(next)
+      return next
+    })
+  }
+
+  // limpa marcacoes de partidas que ja tem placar ou que nao existem mais
+  useEffect(() => {
+    const vivas = new Set(matches.filter((m) => !isPlayed(m)).map((m) => m.id))
+    const sujas = Object.keys(inicios).filter((id) => !vivas.has(id) && matches.some((m) => m.id === id))
+    if (sujas.length === 0) return
+    setInicios((prev) => {
+      const next = { ...prev }
+      for (const id of sujas) delete next[id]
+      saveInicios(next)
+      return next
+    })
+  }, [matches, inicios])
+
+  /** Hora em que a partida entrou em quadra (banco ou celular), se estiver rolando. */
+  function inicioDe(m: Match): string | null {
+    if (isPlayed(m)) return null
+    return m.started_at ?? inicios[m.id] ?? null
+  }
+
   function setScore(m: Match, a: number | null, b: number | null) {
     // lancar o placar tambem encerra a partida: a quadra fica livre de novo
+    marcarInicio(m.id, null)
     saveMatches([{ ...m, score_a: a, score_b: b, started_at: null }])
   }
 
   /** Botao "partida iniciada": e a partir daqui que o app sabe quem esta em quadra. */
   function iniciar(m: Match) {
-    saveMatches([{ ...m, started_at: new Date().toISOString() }])
+    const agora = new Date().toISOString()
+    marcarInicio(m.id, agora)
+    saveMatches([{ ...m, started_at: agora }])
   }
 
   function cancelarInicio(m: Match) {
+    marcarInicio(m.id, null)
     saveMatches([{ ...m, started_at: null }])
   }
 
@@ -590,19 +627,19 @@ function PlayDetail({
    * iniciada" -- entao nao ha adivinhacao por rodada ou por quadra.
    */
   const emJogo = useMemo(
-    () => matches.filter((m) => !!m.started_at && !isPlayed(m)),
-    [matches],
+    () => matches.filter((m) => !isPlayed(m) && !!(m.started_at ?? inicios[m.id])),
+    [matches, inicios],
   )
 
   /** A proxima partida de cada quadra (a primeira sem placar e sem inicio). */
   const proximaDaQuadra = useMemo(() => {
     const porQuadra = new Map<number, Match>()
     for (const m of matches) {
-      if (isPlayed(m) || m.started_at) continue
+      if (isPlayed(m) || m.started_at || inicios[m.id]) continue
       if (!porQuadra.has(m.court)) porQuadra.set(m.court, m)
     }
     return porQuadra
-  }, [matches])
+  }, [matches, inicios])
 
   /** Quem esta jogando agora em OUTRA partida. */
   function ocupadasFora(m: Match): Set<string> {
@@ -701,6 +738,7 @@ function PlayDetail({
         onTrocar={trocar}
         onIniciar={iniciar}
         onCancelarInicio={cancelarInicio}
+        inicioDe={inicioDe}
       />
 
       {canEdit && !finished && (
@@ -791,6 +829,7 @@ function RoundBoard({
   onTrocar,
   onIniciar,
   onCancelarInicio,
+  inicioDe,
 }: {
   rounds: [number, Match[]][]
   session: PlaySession
@@ -802,6 +841,7 @@ function RoundBoard({
   onTrocar: (m: Match, sai: string, entra: string) => void
   onIniciar: (m: Match) => void
   onCancelarInicio: (m: Match) => void
+  inicioDe: (m: Match) => string | null
 }) {
   const { nameOf } = useStore()
   // primeira rodada que ainda falta placar; se acabou tudo, fica na ultima
@@ -867,6 +907,7 @@ function RoundBoard({
                 onTrocar={(sai, entra) => onTrocar(m, sai, entra)}
                 onIniciar={() => onIniciar(m)}
                 onCancelarInicio={() => onCancelarInicio(m)}
+                inicio={inicioDe(m)}
               />
             ))}
             {byes.length > 0 && <div className="tiny muted">Folga nesta rodada: {byes.map(nameOf).join(', ')}</div>}
@@ -889,6 +930,7 @@ function MatchCard({
   onTrocar,
   onIniciar,
   onCancelarInicio,
+  inicio,
 }: {
   match: Match
   target: number
@@ -901,12 +943,13 @@ function MatchCard({
   onTrocar: (sai: string, entra: string) => void
   onIniciar: () => void
   onCancelarInicio: () => void
+  inicio: string | null
 }) {
   const { nameOf, playerById } = useStore()
   const [winner, setWinner] = useState<'a' | 'b' | null>(null)
   const [trocando, setTrocando] = useState<string | null>(null)
   const noTime = [...match.team_a, ...match.team_b]
-  const iniciada = !!match.started_at
+  const iniciada = !!inicio
   const presas = proxima ? noTime.filter((id) => ocupadas.has(id)) : []
   const played = isPlayed(match)
   const [pa, pb] = played ? matchPoints(match.score_a as number, match.score_b as number) : [0, 0]
@@ -1044,7 +1087,7 @@ function MatchCard({
       {iniciada ? (
         <div className="row spread" style={{ marginBottom: 8 }}>
           <span className="tiny" style={{ fontWeight: 800, color: 'var(--teal)' }}>
-            Jogando desde {horaCurta(match.started_at as string)} — lance o placar para encerrar
+            Jogando desde {horaCurta(inicio as string)} — lance o placar para encerrar
           </span>
           <button className="linkish" onClick={onCancelarInicio}>desfazer</button>
         </div>
