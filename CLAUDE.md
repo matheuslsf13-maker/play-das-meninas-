@@ -4,6 +4,10 @@ App do campeonato de **beach tennis** feminino da **V3 Arena**, jogado toda
 sexta. Monta duplas equilibradas, lança placares, fecha o dia e o mês, e mostra
 rankings e estatísticas. Tudo é operado principalmente **pelo celular**.
 
+**Antes de mudar regra do campeonato, algoritmo de duplas ou o "quem está em
+quadra", leia [`DECISOES.md`](DECISOES.md)** — ele guarda o que já foi medido e
+descartado, para não refazer discussão encerrada.
+
 ## Stack
 
 React 18 + TypeScript + Vite 5. Sem router (o estado das abas fica no `App.tsx`).
