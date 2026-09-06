@@ -11,6 +11,8 @@
 <meta property="og:description" content="Beach tennis feminino na V3 Arena, toda segunda às 20h.">
 <meta property="og:image" content="https://playdetodas.com.br/icon-512.png">
 <style>*{box-sizing:border-box}html,body{margin:0;padding:0}img{max-width:100%}</style>
+</head>
+<body>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Kaushan+Script&family=Figtree:wght@400;600;800;900&display=swap">
@@ -53,6 +55,22 @@
 
   .app { position: relative; z-index: 1; min-height: 100svh; display: flex; flex-direction: column; gap: 14px;
     padding: 18px 16px 20px; box-sizing: border-box; max-width: 1080px; margin: 0 auto; }
+
+  /* barra de topo: quem abre o link da apresentacao precisa de uma saida
+     para o app, senao fica preso aqui */
+  .topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .voltar {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 15px; border-radius: 999px;
+    border: 1px solid var(--linha); background: rgba(255, 246, 238, .07);
+    color: var(--creme); text-decoration: none;
+    font-size: 14px; font-weight: 800;
+  }
+  .voltar:hover { border-color: var(--rosa); background: rgba(255, 92, 138, .14); }
+  .topo-nome {
+    font-size: 11px; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--fumaca);
+  }
 
   .palco { position: relative; flex: 1; min-height: 470px; border: 1px solid var(--linha); border-radius: 26px;
     background: linear-gradient(180deg, var(--noite-2), var(--noite)); overflow: hidden; display: flex; }
@@ -243,6 +261,13 @@
 <div class="fundo"></div>
 
 <div class="app">
+  <header class="topo">
+    <a class="voltar" href="https://playdetodas.com.br/">
+      <span aria-hidden="true">←</span> Abrir o app
+    </a>
+    <span class="topo-nome">Apresentação</span>
+  </header>
+
   <div class="palco" id="palco">
 
     <!-- 1 · capa -->
