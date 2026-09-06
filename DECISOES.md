@@ -195,14 +195,45 @@ da quadra fica no pódio toda semana** (fica fora em 3 a 5 de cada 10 sextas) e
 sextas seguidas continua sendo difícil: a campeã de um dia repete no dia
 seguinte em **16% a 27%** das vezes.
 
-⚠️ **No modo em grupos isso muda de figura.** Como cada grupo é um rodízio
-fechado, quem domina o grupo 2 pontua tanto quanto quem domina o grupo 1 — e o
-ranking do dia é um só. Medido: com 16 jogadoras em 2 grupos de 8, a melhor de
-todas cai para **32% de pódio**; com 24 em 3 grupos, para **17%** (contra 12% de
-puro acaso). Não é bug, é consequência do formato — e até democratiza o status,
-porque uma jogadora do grupo mais fraco tem a mesma chance de subir. Mas **a
-campeã do dia num play em grupos não é "a melhor da noite"**, e sim quem melhor
-foi dentro do próprio grupo.
+### No modo em grupos, o pódio mede outra coisa — e está tudo bem
+
+Como cada grupo é um rodízio fechado, quem domina o grupo 2 pontua tanto quanto
+quem domina o grupo 1, e o ranking do dia é um só. A melhor jogadora de todas
+cai de 61% para **32% de pódio** (2 grupos) ou **17%** (3 grupos).
+
+**Decidido: mantém o pódio único.** A pergunta era se um grupo dominaria o
+pódio, deixando o outro de fora. Medido em 800 sextas, 16 jogadoras, 2 grupos:
+
+| | grupo 1 (mais fortes) | grupo 2 |
+|---|---|---|
+| vagas no pódio | 48% | 52% |
+| campeã do dia | 47% | 53% |
+| pontos por jogadora | 7,7 | 7,8 |
+
+**É justo.** Os dois grupos são igualmente equilibrados por dentro, então
+produzem a mesma distribuição de pontos — ninguém leva vantagem por estar no
+grupo forte ou no fraco.
+
+⚠️ **Cuidado com o argumento "grupo equilibrado = mais mérito".** É intuitivo,
+mas o efeito medido é o inverso: quanto mais parelho o grupo, **menos** a melhor
+dele lidera.
+
+| grupo de 8 | a melhor termina em 1º |
+|---|---|
+| níveis misturados (0,8 a 3,2) | 34% |
+| equilibrado (2,4 a 3,2) | 19% |
+| muito equilibrado (2,8 a 3,2) | 15% |
+| puro acaso | 12% |
+
+Faz sentido: entre iguais, cada partida se aproxima de um cara ou coroa. Então
+o pódio de um grupo equilibrado **não** premia "quem é a melhor" — premia
+**quem jogou melhor naquela noite**.
+
+Isso não derruba a decisão, sustenta ela: se o pódio fosse previsível, a mesma
+jogadora seria Duquesa para sempre e o mini-game morreria. O que faz o status
+valer alguma coisa é justamente ele não estar garantido para ninguém — e a
+constancia ao longo das semanas, que é o que o sistema realmente premia, continua
+sendo mérito de verdade.
 
 Quatro regras candidatas foram medidas. A escolhida foi **pódio do dia (top 3)
 + 1 vida**:
