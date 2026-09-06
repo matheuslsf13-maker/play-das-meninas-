@@ -927,3 +927,18 @@ textarea.input { line-height: 1.45; }
   place-items: center;
 }
 .bt-tema:active { background: rgba(255, 246, 238, .22); }
+
+/* atalho para a apresentacao, na tela inicial */
+.card.apresentacao {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+  border: 1.5px solid var(--purple);
+  background: var(--purple-suave);
+}
+.card.apresentacao .prox-titulo { color: var(--purple); }
+.card.apresentacao .prox-selo { background: var(--purple); }

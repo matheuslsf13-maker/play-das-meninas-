@@ -180,6 +180,22 @@ export default function Ranking({
         </div>
       </div>
 
+      <a
+        className="card apresentacao"
+        href={`${import.meta.env.BASE_URL}apresentacao/`}
+        target="_blank"
+        rel="noopener"
+      >
+        <span className="prox-selo">📖</span>
+        <span className="grow" style={{ minWidth: 0 }}>
+          <span className="prox-titulo">Primeira vez aqui?</span>
+          <span className="prox-info">Como funciona o Play de Todas</span>
+          <span className="prox-acao">
+            participação, instalação, formatos e o mini-game dos status →
+          </span>
+        </span>
+      </a>
+
       {emAndamento && (
         <button className="card proximo" onClick={() => onAbrirPlay?.(emAndamento.id)}>
           <span className="prox-selo">🏐</span>
