@@ -74,6 +74,9 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
   quadra parada e a troca de jogadoras.
 - A lista "Próximas na fila" usa `ordemPrevista()`, não a ordem gravada: mostrar
   a ordem de geração colocava na frente quem tinha acabado de sair da quadra.
+- **O placar só é lançável depois de "▶️ Partida iniciada"** (botões de "venceu"
+  desabilitados). Corrigir placar é o ✏️ da lista "Já jogadas", que abre um modal
+  e **preserva o `ended_at`** — não devolve a partida para a fila.
 
 ## Convenções
 

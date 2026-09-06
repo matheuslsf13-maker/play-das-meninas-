@@ -213,6 +213,24 @@ Em cima disso funcionam o aviso **"⏳ fulana ainda está jogando em outra quadr
 com o botão **"🔄 Chamar quem está livre"** (`liberarPartida`, mesmos critérios
 do sorteio) e o "livre / em quadra" na troca de jogadoras.
 
+## O placar só depois de "partida iniciada"
+
+Dava para lançar o placar de uma partida que nunca tinha entrado em quadra.
+A partida ficava gravada **sem quadra e sem hora de início** — e são justamente
+esses dois dados que dizem quem está em quadra agora e quem está fora há mais
+tempo. Além disso, era fácil lançar por engano o placar do cartão da quadra
+errada.
+
+Agora os botões de "venceu" ficam **bloqueados até marcar a partida como
+iniciada**, com o botão verde logo acima e uma linha explicando. Custa um toque
+a mais quando o play é lançado depois, no papel — vale a pena pelo dado certo.
+
+Isso obrigou a mudar a **correção de placar**: antes o ✏️ apagava o placar e
+devolvia a partida para a fila, o que com o bloqueio a deixaria presa lá,
+parecendo que sumiu. Hoje o ✏️ abre um modal que troca o placar direto,
+**preservando a hora em que a partida terminou** — senão aquelas quatro
+voltariam para o fim da fila de espera por causa de uma correção.
+
 ## Quadras "com bug" que não eram bug
 
 Reclamação: "selecionei 3 quadras e o play gerou com 2". A matemática estava

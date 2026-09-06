@@ -555,6 +555,7 @@ function PlayDetail({
   /** Partida escolhida na mao para uma quadra, no lugar da sugestao. */
   const [manuais, setManuais] = useState<Record<number, string>>({})
   const [escolhendo, setEscolhendo] = useState<number | null>(null)
+  const [corrigindo, setCorrigindo] = useState<Match | null>(null)
 
   const matches = useMemo(
     () =>
@@ -761,11 +762,13 @@ function PlayDetail({
 
   function setScore(m: Match, a: number | null, b: number | null) {
     // lancar o placar tambem encerra a partida: a quadra fica livre de novo
-    const agora = new Date().toISOString()
-    marcarInicio(m.id, null)
     const encerrando = a !== null && b !== null
-    marcarFim(m.id, encerrando ? agora : null)
-    saveMatches([{ ...m, score_a: a, score_b: b, started_at: null, ended_at: encerrando ? agora : null }])
+    // corrigir um placar antigo nao muda a hora em que a partida terminou:
+    // senao aquelas quatro voltariam para o fim da fila de espera
+    const fim = encerrando ? m.ended_at ?? fins[m.id] ?? new Date().toISOString() : null
+    marcarInicio(m.id, null)
+    marcarFim(m.id, fim)
+    saveMatches([{ ...m, score_a: a, score_b: b, started_at: null, ended_at: fim }])
   }
 
   /** Botao "partida iniciada": e a partir daqui que o app sabe quem esta em quadra. */
@@ -1061,7 +1064,7 @@ function PlayDetail({
         emQuadra={ocupadas}
         target={session.target}
         editable={editable}
-        onLimparPlacar={(m) => setScore(m, null, null)}
+        onCorrigir={(m) => setCorrigindo(m)}
       />
 
       {editable && (
@@ -1086,6 +1089,15 @@ function PlayDetail({
         >
           ➡️ Gerar as duplas do próximo play
         </button>
+      )}
+
+      {corrigindo && (
+        <CorrigirPlacar
+          match={corrigindo}
+          target={session.target}
+          onClose={() => setCorrigindo(null)}
+          onScore={(a, b) => { setScore(corrigindo, a, b); setCorrigindo(null) }}
+        />
       )}
 
       {escolhendo !== null && (
@@ -1389,15 +1401,26 @@ function MatchCard({
         </button>
       )}
 
-      <button className="pick-team" onClick={() => setWinner('a')}>
+      {/*
+        So da para lancar o placar depois de marcar a partida como iniciada.
+        Sem isso a partida era gravada sem quadra e sem hora de inicio -- e sao
+        esses dois dados que dizem quem esta em quadra e quem esta fora ha mais
+        tempo. E tambem evita lancar sem querer o placar da quadra errada.
+      */}
+      <button className="pick-team" disabled={!iniciada} onClick={() => setWinner('a')}>
         <Duo ids={match.team_a} ocupadas={iniciada ? undefined : ocupadas} />
         <span className="pick-tag">venceu</span>
       </button>
       <div className="vs">X</div>
-      <button className="pick-team" onClick={() => setWinner('b')}>
+      <button className="pick-team" disabled={!iniciada} onClick={() => setWinner('b')}>
         <Duo ids={match.team_b} ocupadas={iniciada ? undefined : ocupadas} />
         <span className="pick-tag">venceu</span>
       </button>
+      {!iniciada && (
+        <p className="tiny muted" style={{ margin: '8px 0 0', textAlign: 'center' }}>
+          Toque em <strong>Partida iniciada</strong> para poder lançar o placar.
+        </p>
+      )}
 
       <div className="row" style={{ gap: 8, marginTop: 8 }}>
         <button className="btn ghost sm grow" onClick={() => setTrocando(true)}>🔄 Trocar jogadora</button>
@@ -1424,7 +1447,7 @@ function ListaDePartidas({
   emQuadra,
   target,
   editable,
-  onLimparPlacar,
+  onCorrigir,
 }: {
   titulo: string
   vazio: string
@@ -1441,7 +1464,7 @@ function ListaDePartidas({
   emQuadra: Set<string>
   target?: number
   editable?: boolean
-  onLimparPlacar?: (m: Match) => void
+  onCorrigir?: (m: Match) => void
 }) {
   const { nameOf } = useStore()
   const [aberta, setAberta] = useState(false)
@@ -1505,11 +1528,11 @@ function ListaDePartidas({
                     <span className="tiny muted">⏳ tem gente desta partida em quadra agora</span>
                   )}
                 </span>
-                {jogada && editable && onLimparPlacar && (
+                {jogada && editable && onCorrigir && (
                   <button
                     className="btn ghost sm"
-                    title={`partida até ${target} pontos`}
-                    onClick={() => onLimparPlacar(m)}
+                    title={`corrigir o placar (partida até ${target} pontos)`}
+                    onClick={() => onCorrigir(m)}
                   >✏️</button>
                 )}
               </div>
@@ -1521,6 +1544,70 @@ function ListaDePartidas({
         <p className="tiny muted" style={{ marginBottom: 0 }}>{rodape}</p>
       )}
     </div>
+  )
+}
+
+/**
+ * Corrige o placar de uma partida ja jogada, direto.
+ *
+ * Antes o botao apagava o placar e devolvia a partida para a fila -- com o
+ * bloqueio de "so lanca depois de iniciar", ela ficaria presa la, parecendo
+ * que sumiu. Aqui o placar e trocado sem a partida sair do lugar.
+ */
+function CorrigirPlacar({
+  match,
+  target,
+  onScore,
+  onClose,
+}: {
+  match: Match
+  target: number
+  onScore: (a: number | null, b: number | null) => void
+  onClose: () => void
+}) {
+  const { nameOf } = useStore()
+  const [winner, setWinner] = useState<'a' | 'b' | null>(null)
+
+  if (winner) {
+    const perdedoras = winner === 'a' ? match.team_b : match.team_a
+    return (
+      <Modal title="Quantos games a perdedora fez?" onClose={onClose}>
+        <button className="btn ghost sm" style={{ marginBottom: 10 }} onClick={() => setWinner(null)}>
+          ‹ trocar quem venceu
+        </button>
+        <div className="ask" style={{ marginTop: 0 }}>
+          <strong>{nameOf(perdedoras[0])} + {nameOf(perdedoras[1])}</strong>
+        </div>
+        <div className="games-row">
+          {Array.from({ length: target }, (_, n) => (
+            <button
+              key={n}
+              className="game-btn"
+              onClick={() => (winner === 'a' ? onScore(target, n) : onScore(n, target))}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal title="Corrigir o placar" onClose={onClose}>
+      <p className="tiny muted" style={{ marginTop: 0 }}>
+        Placar atual: <strong>{match.score_a} x {match.score_b}</strong>. Escolha quem venceu.
+      </p>
+      <button className="pick-team" onClick={() => setWinner('a')}>
+        <Duo ids={match.team_a} />
+        <span className="pick-tag">venceu</span>
+      </button>
+      <div className="vs">X</div>
+      <button className="pick-team" onClick={() => setWinner('b')}>
+        <Duo ids={match.team_b} />
+        <span className="pick-tag">venceu</span>
+      </button>
+    </Modal>
   )
 }
 

@@ -438,6 +438,10 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   text-align: left;
 }
 .pick-team:active { background: #fdeef3; border-color: var(--pink); }
+/* placar so depois de "partida iniciada": sem isso da para lancar por engano
+   a partida da quadra errada, e ela fica gravada sem quadra e sem horario */
+.pick-team:disabled { opacity: .5; cursor: not-allowed; }
+.pick-team:disabled .pick-tag { background: var(--muted); }
 .pick-team .names { flex: 1; font-weight: 700; font-size: 15px; }
 .pick-tag {
   flex: none;
