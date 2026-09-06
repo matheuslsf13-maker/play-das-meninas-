@@ -11,15 +11,28 @@ está *por que ele funciona assim*.
 
 ## O campeonato
 
-**Play de Todas**, beach tennis **feminino** na **V3 Arena**, toda sexta.
+**Play de Todas**, beach tennis **feminino** na **V3 Arena**, **toda segunda,
+20h**. A lista de confirmação abre na sexta da semana anterior; R$ 45 por
+participação, com check-in por Wellhub/Gympass e TotalPass acertado com a
+administradora do grupo.
 
 Não confundir com "Play das Meninas" — esse é um campeonato **concorrente**, e
 o nome dele **não pode aparecer em lugar nenhum**. Já apareceu em três: no nome
 do repositório (e portanto no link que vai para o grupo), no `package.json` e
 nas chaves do `localStorage`. Tudo renomeado para `play-da-sexta`.
 
-O nome também estava escrito errado dentro do app: "Play **de** Sexta", enquanto
-o logo sempre trouxe "PLAY **da** Sexta". Vale o logo.
+O nome já mudou três vezes: era "Play de Sexta" no código enquanto o logo dizia
+"PLAY da Sexta" (valeu o logo), e depois o campeonato virou **Play de Todas** e
+mudou de dia — de sexta para **segunda**. Por isso o vocabulário das sequências
+é **neutro de dia** ("semanas seguidas no pódio", não "sextas"): amarrar o
+mini-game a um dia da semana já custou uma rodada de retrabalho.
+
+⚠️ **O logo é o único lugar que não acompanha sozinho.** A arte trazia
+"PLAY da Sexta" desenhado na imagem, e imagem não se edita por código — o
+arquivo saiu de `public/`. Enquanto `public/logo.png` não existir, o selo
+desenhado em `ui.tsx` assume e as artes de fechamento escrevem o nome como
+texto. **Basta soltar o logo novo em `public/logo.png`** que tudo volta a usar
+a imagem, sem mexer em código.
 
 Duas coisas mudam toda semana e por isso são informadas na hora de criar o play:
 **quantas jogadoras vieram** (as meninas decidem durante a semana) e **quantas
@@ -361,6 +374,22 @@ worker e os caches), cache do SW versionado por build, rodapé com a versão e
   vale. Dá para **reabrir** — serve para teste e para desfazer engano.
   Gravado em `month_closures`; a virada do calendário continua como rede de
   segurança.
+
+## Tema escuro, com as cores do logo
+
+O app nasceu claro (creme com topo azul). Virou **escuro**: fundo azul de noite
+com o pôr do sol do logo (roxo → rosa → laranja) nos acentos. É a paleta da
+apresentação, e faz sentido no uso real — o play é à noite, na areia, com o
+celular na mão.
+
+A troca foi feita por **tokens semânticos**, não cor a cor: as 102 cores fixas
+do CSS foram mapeadas pelo papel que cumpriam (superfície, tinta de aviso,
+texto). Isso expôs um bug de contraste que já existia — o mesmo `#fff` servia
+de **texto sobre fundo escuro** e de **superfície clara**, então a tradução
+automática apagou o "PLAY" do cabeçalho. Agora cada uso declara o papel:
+`var(--text)` sobre fundo escuro, `var(--noite)` sobre fundo vivo.
+
+A arte de fechamento (canvas) segue a mesma paleta.
 
 ## Interface
 
