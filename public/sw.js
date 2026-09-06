@@ -4,7 +4,7 @@
 // a versao vem da URL de registro (sw.js?v=...), entao cada publicacao usa um
 // cache novo e os arquivos da versao anterior sao apagados
 const VERSAO = new URL(self.location.href).searchParams.get('v') || 'dev'
-const CACHE = 'play-sexta-' + VERSAO
+const CACHE = 'play-de-todas-' + VERSAO
 
 self.addEventListener('install', (e) => {
   self.skipWaiting()
