@@ -18,8 +18,8 @@ export function isPlayed(m: Match): boolean {
 }
 
 export const POINTS_TABLE = [
-  { label: '4 x 0', points: 4, color: '#f5c518' },
-  { label: '4 x 1', points: 3, color: '#ef4b7d' },
-  { label: '4 x 2', points: 2, color: '#6d3fa0' },
-  { label: '4 x 3', points: 1, color: '#f28a2e' },
+  { label: '4 x 0', points: 4, color: 'var(--yellow)' },
+  { label: '4 x 1', points: 3, color: 'var(--pink)' },
+  { label: '4 x 2', points: 2, color: 'var(--purple)' },
+  { label: '4 x 3', points: 1, color: 'var(--orange)' },
 ]

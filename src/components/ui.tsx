@@ -67,8 +67,13 @@ export function Stepper({
 }
 
 /**
- * Logo do campeonato. Enquanto o arquivo public/logo.png nao existir,
- * mostra um selo desenhado, para a tela nunca ficar com imagem quebrada.
+ * Logo do campeonato.
+ *
+ * PROVISORIO: o logo antigo trazia "PLAY da Sexta" desenhado na arte e o
+ * campeonato virou "Play de Todas", entao o arquivo foi tirado do ar em vez de
+ * ficar mostrando o nome errado. Enquanto `public/logo.png` nao existir, este
+ * selo desenhado assume. Basta soltar o logo novo nesse caminho -- nada mais
+ * precisa mudar, nem aqui nem nas artes de fechamento.
  */
 export function Logo({ size = 64 }: { size?: number }) {
   const [ok, setOk] = React.useState(true)
@@ -76,7 +81,7 @@ export function Logo({ size = 64 }: { size?: number }) {
     return (
       <img
         src={`${import.meta.env.BASE_URL}logo.png`}
-        alt="Play da Sexta"
+        alt="Play de Todas"
         width={size}
         height={size}
         style={{ width: size, height: size, objectFit: 'contain', flex: 'none' }}
@@ -85,18 +90,21 @@ export function Logo({ size = 64 }: { size?: number }) {
     )
   }
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flex: 'none' }} aria-label="Play da Sexta">
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flex: 'none' }} aria-label="Play de Todas">
       <defs>
-        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor="#f5c518" />
-          <stop offset="1" stopColor="#ef4b7d" />
+        <linearGradient id="pdt" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#8b5cf0" />
+          <stop offset=".55" stopColor="#ff5c8a" />
+          <stop offset="1" stopColor="#ff8a3d" />
         </linearGradient>
       </defs>
-      <circle cx="50" cy="50" r="46" fill="none" stroke="url(#lg)" strokeWidth="4" />
-      <circle cx="50" cy="42" r="24" fill="url(#lg)" />
-      <path d="M32 30c10 8 10 18 0 26M68 30c-10 8-10 18 0 26" stroke="#141a3c" strokeWidth="3.5" fill="none" strokeLinecap="round" />
-      <rect x="30" y="34" width="40" height="11" rx="5" fill="#2b1b4d" />
-      <text x="50" y="80" textAnchor="middle" fontSize="17" fontWeight="800" fill="#6d3fa0" fontFamily="system-ui, sans-serif">SEXTA</text>
+      <circle cx="50" cy="50" r="47" fill="url(#pdt)" />
+      {/* bola de beach tennis, com a costura em arco */}
+      <circle cx="50" cy="36" r="16" fill="#0e1230" opacity=".22" />
+      <circle cx="50" cy="34" r="16" fill="#fff6ee" />
+      <path d="M38 26c7 5 7 11 0 16M62 26c-7 5-7 11 0 16" stroke="#ff5c8a" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <text x="50" y="66" textAnchor="middle" fontSize="15" fontWeight="800" fill="#fff6ee" fontFamily="system-ui, sans-serif" letterSpacing="2.5">PLAY</text>
+      <text x="50" y="84" textAnchor="middle" fontSize="17" fontWeight="800" fill="#fff6ee" fontFamily="system-ui, sans-serif">de Todas</text>
     </svg>
   )
 }

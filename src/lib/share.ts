@@ -20,7 +20,7 @@ export function monthRankingText(
   nameOf: (id: string) => string,
   fire?: Map<string, number>,
 ): string {
-  const head = `🏆 RANKING DO MÊS — ${monthLabel(ym).toUpperCase()}\n_Play da Sexta · Beach Tennis_\n`
+  const head = `🏆 RANKING DO MÊS — ${monthLabel(ym).toUpperCase()}\n_Play de Todas · Beach Tennis_\n`
   const body = rows
     .map((s, i) => line(i, nameOf(s.player_id), s, fire?.get(s.player_id) ?? 0))
     .join('\n')
@@ -43,7 +43,7 @@ export function dayRankingText(
   const body = rows.map((s, i) => line(i, nameOf(s.player_id), s)).join('\n')
   const lvl = award ? streakLevel(award.streak) : null
   const extra = award && lvl
-    ? `\n\n${lvl.emoji} ${nameOf(award.player_id)} é ${lvl.title.toUpperCase()}: ${award.streak} sextas seguidas no pódio, status valendo ${award.value} pontos!`
+    ? `\n\n${lvl.emoji} ${nameOf(award.player_id)} é ${lvl.title.toUpperCase()}: ${award.streak} semanas seguidas no pódio, status valendo ${award.value} pontos!`
     : ''
   return `${head}\n${body}${extra}`
 }

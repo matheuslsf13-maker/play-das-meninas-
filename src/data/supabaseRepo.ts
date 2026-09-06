@@ -110,7 +110,7 @@ export const supabaseRepo: Repo = {
   subscribe(cb: () => void) {
     const sb = client()
     const ch = sb
-      .channel('play-da-sexta')
+      .channel('play-de-todas')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'players' }, cb)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'sessions' }, cb)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, cb)

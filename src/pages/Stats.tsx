@@ -199,7 +199,7 @@ function PainelJogadora({
             {statusUsados.map((a) => {
               const lvl = streakLevel(a.streak)
               return (
-                <div key={a.month} className="tiny" style={{ background: '#fff3d6', color: '#7a5606', borderRadius: 10, padding: '8px 10px' }}>
+                <div key={a.month} className="tiny" style={{ background: 'var(--yellow-suave)', color: 'var(--yellow)', borderRadius: 10, padding: '8px 10px' }}>
                   {lvl?.emoji} usou <strong>{lvl?.title}</strong> no fechamento de {monthLabel(a.month)} — <strong>+{a.bonus} pts</strong>
                 </div>
               )
@@ -207,7 +207,7 @@ function PainelJogadora({
           </div>
         ) : (
           <p className="tiny muted" style={{ marginBottom: 0 }}>
-            Terminar a sexta no pódio mantém o status. Ele vira pontos só quando ela usa, no fechamento do mês.
+            Terminar o play no pódio mantém o status. Ele vira pontos só quando ela usa, no fechamento do mês.
           </p>
         )}
       </div>

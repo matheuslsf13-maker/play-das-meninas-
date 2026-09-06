@@ -6,10 +6,10 @@ import { monthOf, todayISO } from './types'
  * STATUS DE SEQUENCIA ("em chamas")
  *
  * Como as duplas sao equilibradas, a campea do dia e quase sorteio: medindo em
- * 400 sextas simuladas, emendar duas vitorias acontece em 11% das vezes e
+ * 400 plays simulados, emendar duas vitorias acontece em 11% das vezes e
  * ninguem chega perto de 4. Por isso o que mantem o status nao e vencer o dia,
  * e sim terminar no PODIO do dia (top 3) -- e quem preserva o status no
- * fechamento do mes ganha 1 VIDA, que absorve uma sexta fora do podio.
+ * fechamento do mes ganha 1 VIDA, que absorve um play fora do podio.
  *
  * O status vale pontos uma unica vez: no fechamento do mes, se ela ainda o
  * tiver, escolhe USAR (os pontos entram naquele mes e o status zera) ou
@@ -18,7 +18,7 @@ import { monthOf, todayISO } from './types'
  * O mes fecha de tres jeitos: quando aparece um play de um mes seguinte,
  * quando o calendario passa do mes, ou quando a organizadora aperta
  * "finalizar o mes" (`MonthClosure`). O botao existe porque a premiacao
- * acontece na ultima sexta, antes de o calendario virar.
+ * acontece no ultimo play do mes, antes de o calendario virar.
  */
 
 export type StreakLevel = { emoji: string; title: string }
@@ -49,7 +49,7 @@ export function streakLevel(streak: number): StreakLevel | null {
 /** Quantas jogadoras sobem ao podio do dia. */
 export const PODIO = 3
 
-/** O status maximo: 8 sextas seguidas no podio. */
+/** O status maximo: 8 semanas seguidas no podio. */
 export const MAX_STREAK = 8
 
 export function isMaxLevel(streak: number): boolean {
@@ -64,13 +64,13 @@ export type StreakAward = {
   bonus: number
 }
 
-/** O que aconteceu com a sequencia de alguem numa sexta. */
+/** O que aconteceu com a sequencia de alguem num play. */
 export type StreakStep = {
   session_id: string
   date: string
   player_id: string
   streak: number
-  /** true quando a vida foi gasta para segurar o status nesta sexta. */
+  /** true quando a vida foi gasta para segurar o status neste play. */
   usouVida: boolean
   value: number
 }
@@ -115,7 +115,7 @@ function acaoDe(c: StreakChoice | undefined): 'usar' | 'preservar' | null {
 export function computeStreaks(data: AppData): Streaks {
   const escolhas = new Map(data.choices.map((c) => [`${c.player_id}:${c.month}`, c]))
   const finished = data.sessions
-    // play avulso nao mexe em sequencia: o status e sobre as sextas
+    // play avulso nao mexe em sequencia: o status e sobre o campeonato
     .filter((s) => s.status === 'finished' && s.ranked !== false)
     .sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at))
 

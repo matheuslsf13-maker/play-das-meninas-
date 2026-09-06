@@ -1,5 +1,5 @@
 -- ============================================================
---  Play da Sexta — fila de partidas, modo em grupos e
+--  Play de Todas — fila de partidas, modo em grupos e
 --  fechamento de mês na mão.
 --  Rode no SQL Editor do Supabase (depois dos scripts 01 a 04).
 --
@@ -39,7 +39,7 @@ comment on column public.sessions.rounds is 'total de partidas do dia';
 -- ------------------------------------------------------------
 --  3. Fechamento de mês feito na mão.
 --     Sem isto o mês só fecha quando o calendário vira, mas a premiação
---     acontece na última sexta.
+--     acontece no último play do mês.
 -- ------------------------------------------------------------
 create table if not exists public.month_closures (
   id         text primary key,          -- o próprio mês, YYYY-MM

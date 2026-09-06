@@ -236,7 +236,7 @@ function NewPlay({
 }) {
   const { data, saveSession, saveMatches, playerById, nameOf } = useStore()
   const [date, setDate] = useState(preset.date ?? todayISO())
-  const [title, setTitle] = useState(preset.title ?? 'Play da Sexta')
+  const [title, setTitle] = useState(preset.title ?? 'Play de Todas')
   const [courts, setCourts] = useState(preset.courts ?? 3)
   const [format, setFormat] = useState<PlayFormat>(preset.format ?? 'todas')
   const [porGrupo, setPorGrupo] = useState(8)
@@ -292,7 +292,7 @@ function NewPlay({
       const session: PlaySession = {
         id: uid(),
         date,
-        title: title.trim() || 'Play da Sexta',
+        title: title.trim() || 'Play de Todas',
         courts: effCourts,
         rounds: fila.length, // a coluna se chama rounds; hoje e o total de partidas
         target,
@@ -1137,9 +1137,9 @@ function PlayDetail({
           ) : (
             <>
               {award && awardLevel && (
-                <div className="banner warn" style={{ background: '#ffe9d6', color: '#8a4b06' }}>
+                <div className="banner warn" style={{ background: 'var(--orange-suave)', color: 'var(--orange)' }}>
                   {awardLevel.emoji} <strong>{nameOf(award.player_id)}</strong> é {awardLevel.title.toLowerCase()}!
-                  {' '}{award.streak} sextas seguidas no pódio do dia — status vale{' '}
+                  {' '}{award.streak} semanas seguidas no pódio do dia — status vale{' '}
                   <strong>{award.value} pontos</strong>, que ela decide se usa no fechamento do mês.
                   {award.usouVida && ' (uma vida foi consumida para segurar o status hoje)'}
                 </div>

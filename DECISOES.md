@@ -11,7 +11,7 @@ está *por que ele funciona assim*.
 
 ## O campeonato
 
-**Play da Sexta**, beach tennis **feminino** na **V3 Arena**, toda sexta.
+**Play de Todas**, beach tennis **feminino** na **V3 Arena**, toda sexta.
 
 Não confundir com "Play das Meninas" — esse é um campeonato **concorrente**, e
 o nome dele **não pode aparecer em lugar nenhum**. Já apareceu em três: no nome

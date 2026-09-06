@@ -39,7 +39,7 @@ export default function App() {
         <div className="row spread">
           <Logo size={46} />
           <div className="grow">
-            <h1>Play <span>da Sexta</span></h1>
+            <h1>Play <span>de Todas</span></h1>
             <div className="sub">
               <span>Beach Tennis · V3 Arena</span>
               {online && canEdit ? (

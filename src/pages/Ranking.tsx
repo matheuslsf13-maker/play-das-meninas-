@@ -175,7 +175,7 @@ export default function Ranking({
       <div className="card hero">
         <Logo size={92} />
         <div className="hero-txt">
-          <div className="hero-nome">Play da Sexta</div>
+          <div className="hero-nome">Play de Todas</div>
           <div className="tiny muted">Beach Tennis · V3 Arena · <em>mais que um play, uma experiência!</em></div>
         </div>
       </div>
@@ -312,7 +312,7 @@ export default function Ranking({
                       {nameOf(f.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {lvl?.title} · {f.streak} sextas seguidas no pódio
+                      {lvl?.title} · {f.streak} semanas seguidas no pódio
                       {f.life > 0 && ' · 💚 tem 1 vida'}
                     </div>
                   </div>
@@ -324,7 +324,7 @@ export default function Ranking({
             })}
           </div>
           <p className="tiny muted" style={{ marginBottom: 0 }}>
-            O status se mantém enquanto ela terminar a sexta no <strong>pódio do dia</strong> (top {PODIO}).
+            O status se mantém enquanto ela terminar o play no <strong>pódio do dia</strong> (top {PODIO}).
             Ele só vira pontos no fechamento do mês, se ela escolher usar.
           </p>
         </div>
@@ -351,7 +351,7 @@ export default function Ranking({
                       {nameOf(d.player_id)} {lvl?.emoji}
                     </div>
                     <div className="tiny muted">
-                      {lvl?.title} · {d.streak} sextas · vale <strong>{d.value} pts</strong>
+                      {lvl?.title} · {d.streak} semanas · vale <strong>{d.value} pts</strong>
                       {!d.respondido && ' · ainda não respondeu'}
                     </div>
                     {canEdit && (
@@ -365,7 +365,7 @@ export default function Ranking({
                               !confirm(
                                 `Usar o status de ${nameOf(d.player_id)}?\n\n` +
                                   `Ela ganha ${d.value} pontos em ${monthLabel(d.month)}, ` +
-                                  `mas o ${lbl} (${d.streak} sextas) zera e ela recomeça do zero.\n\n` +
+                                  `mas o ${lbl} (${d.streak} semanas) zera e ela recomeça do zero.\n\n` +
                                   `Essa escolha não tem volta.`,
                               )
                             )
@@ -437,20 +437,20 @@ export default function Ranking({
         <div className="section-title">⭐ Pontuação individual</div>
         <div className="grid2" style={{ gap: 8 }}>
           {POINTS_TABLE.map((p) => (
-            <div key={p.label} style={{ background: p.color, borderRadius: 12, padding: '8px 10px', color: '#fff' }}>
+            <div key={p.label} style={{ background: p.color, borderRadius: 12, padding: '8px 10px', color: 'var(--noite)' }}>
               <div className="tiny" style={{ fontWeight: 800, letterSpacing: '.5px' }}>VITÓRIA POR {p.label}</div>
               <div style={{ fontSize: 22, fontWeight: 900 }}>{p.points} <span style={{ fontSize: 11 }}>PONTOS</span></div>
             </div>
           ))}
         </div>
-        <p className="small" style={{ color: '#c9c6e0' }}>
+        <p className="small" style={{ color: 'var(--muted)' }}>
           Cada partida vai até 4 pontos, sem empate. Quem vence leva os pontos da tabela; a derrota não pontua.
           Ao final do play, os pontos são somados ao ranking mensal.
         </p>
         <hr className="sep" style={{ borderColor: 'rgba(255,255,255,.15)' }} />
         <div className="section-title" style={{ marginBottom: 6 }}>🔥 Bônus em chamas</div>
-        <p className="small" style={{ color: '#c9c6e0', marginTop: 0, marginBottom: 8 }}>
-          Terminou várias sextas seguidas no <strong>pódio do dia</strong> (top {PODIO})? Você ganha um status:
+        <p className="small" style={{ color: 'var(--muted)', marginTop: 0, marginBottom: 8 }}>
+          Terminou várias semanas seguidas no <strong>pódio do dia</strong> (top {PODIO})? Você ganha um status:
         </p>
         <div className="grid2" style={{ gap: 8 }}>
           {STREAK_LADDER.map((x) => {
@@ -460,8 +460,8 @@ export default function Ranking({
               <div
                 key={x.title}
                 style={{
-                  background: top ? 'linear-gradient(135deg, #f5c518, #e08e00)' : 'rgba(255,255,255,.08)',
-                  color: top ? '#3d2a00' : undefined,
+                  background: top ? 'var(--por-do-sol)' : 'var(--card-2)',
+                  color: top ? 'var(--noite)' : undefined,
                   borderRadius: 12,
                   padding: '8px 10px',
                   gridColumn: top ? '1 / -1' : undefined,
@@ -475,11 +475,11 @@ export default function Ranking({
             )
           })}
         </div>
-        <p className="tiny" style={{ color: '#9d99bb', marginBottom: 0 }}>
+        <p className="tiny" style={{ color: 'var(--muted)', marginBottom: 0 }}>
           <strong>No fechamento do mês ela escolhe:</strong> <em>usar</em> o status (os pontos entram
           naquele mês e a sequência zera) ou <em>preservar</em> (não pontua, o status continua
-          crescendo e ela ganha <strong>1 vida</strong>, que segura uma sexta fora do pódio).
-          Faltar zera o status mesmo com vida — tem que estar lá. Como o mês tem 4 ou 5 sextas,
+          crescendo e ela ganha <strong>1 vida</strong>, que segura um play fora do pódio).
+          Faltar zera o status mesmo com vida — tem que estar lá. Como o mês tem 4 ou 5 plays,
           Imperatriz e Duquesa só existem para quem preserva e atravessa meses.
         </p>
       </div>

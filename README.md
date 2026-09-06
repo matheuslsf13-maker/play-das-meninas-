@@ -1,6 +1,6 @@
-# 🏐 Play da Sexta — Beach Tennis
+# 🏐 Play de Todas — Beach Tennis
 
-App para organizar o **Play da Sexta**, o campeonato de **beach tennis** da V3 Arena: monta as duplas equilibradas,
+App para organizar o **Play de Todas**, o campeonato de **beach tennis** da V3 Arena: monta as duplas equilibradas,
 lança os placares, fecha o dia, soma os pontos no ranking do mês e mostra as
 estatísticas individuais, de duplas e de confrontos.
 

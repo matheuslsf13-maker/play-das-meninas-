@@ -1,4 +1,4 @@
-# 💻 Rodar o Play da Sexta no seu computador (Windows)
+# 💻 Rodar o Play de Todas no seu computador (Windows)
 
 Passo a passo para ter o projeto inteiro em `C:\Playdesexta` e trabalhar nele
 localmente (inclusive com o Claude Code rodando na sua máquina).

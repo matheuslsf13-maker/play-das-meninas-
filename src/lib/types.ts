@@ -18,7 +18,7 @@ export type SessionStatus = 'open' | 'finished'
  */
 export type PlayFormat = 'todas' | 'grupos'
 
-/** Um "Play da Sexta": um dia de jogos. */
+/** Um "Play de Todas": um dia de jogos. */
 export type PlaySession = {
   id: string
   date: string // YYYY-MM-DD
@@ -83,7 +83,7 @@ export type StreakChoice = {
 /**
  * Fechamento de mes feito na mao pela organizadora ("finalizar o mes").
  * Sem isso o mes so fecha quando o calendario vira, o que atrapalha testes e
- * impede fechar na ultima sexta, que e quando a premiacao acontece.
+ * impede fechar no ultimo play do mes, que e quando a premiacao acontece.
  */
 export type MonthClosure = {
   id: string // o proprio mes, YYYY-MM

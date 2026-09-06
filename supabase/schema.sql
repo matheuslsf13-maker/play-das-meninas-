@@ -1,5 +1,5 @@
 -- ============================================================
---  Play da Sexta — banco inicial
+--  Play de Todas — banco inicial
 --  Cole este script inteiro no SQL Editor do Supabase e rode.
 -- ============================================================
 
@@ -14,7 +14,7 @@ create table if not exists public.players (
 create table if not exists public.sessions (
   id          text primary key,
   date        date not null,
-  title       text not null default 'Play da Sexta',
+  title       text not null default 'Play de Todas',
   courts      int  not null default 3,
   rounds      int  not null default 8,
   target      int  not null default 4,

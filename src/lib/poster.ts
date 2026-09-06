@@ -19,20 +19,21 @@ export type PosterRow = {
 
 const W = 1080
 const H = 1350
-const NAVY = '#141a3c'
-const PINK = '#ef4b7d'
-const CREAM = '#fdf6ec'
-const GOLD = '#f5c518'
-const SILVER = '#c9cede'
-const BRONZE = '#e0a06a'
+// mesma paleta do app: a noite na areia, com o por do sol do logo
+const NAVY = '#0e1230'
+const PINK = '#ff5c8a'
+const CREAM = '#fff6ee'
+const GOLD = '#ffc940'
+const SILVER = '#cdd3e6'
+const BRONZE = '#f0a86e'
 
-/** Arte do fechamento do dia: podio da sexta e o resto da classificacao. */
+/** Arte do fechamento do dia: podio do play e o resto da classificacao. */
 export async function buildDayPoster(
   data: string,
   rows: PosterRow[],
   logoUrl?: string,
 ): Promise<Blob> {
-  return desenhar(`SEXTA ${data}`, 'RANKING DO DIA', rows, logoUrl)
+  return desenhar(data, 'RANKING DO DIA', rows, logoUrl)
 }
 
 /** Arte do fechamento do mes. */
@@ -77,7 +78,8 @@ async function desenhar(
 function fundo(c: CanvasRenderingContext2D) {
   const g = c.createLinearGradient(0, 0, W, H)
   g.addColorStop(0, NAVY)
-  g.addColorStop(1, '#2f2168')
+  g.addColorStop(0.55, '#2a2064')
+  g.addColorStop(1, '#4a2260')
   c.fillStyle = g
   c.fillRect(0, 0, W, H)
 
@@ -137,7 +139,7 @@ function cabecalho(
 
   c.font = '900 66px system-ui, Segoe UI, Arial, sans-serif'
   const a = 'PLAY '
-  const b = 'DA SEXTA'
+  const b = 'DE TODAS'
   const inicio = (W - c.measureText(a).width - c.measureText(b).width) / 2
   c.textAlign = 'left'
   c.fillStyle = '#fff'

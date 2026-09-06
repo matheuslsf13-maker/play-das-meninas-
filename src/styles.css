@@ -1,19 +1,44 @@
 :root {
-  --navy: #141a3c;
-  --navy-2: #1e2650;
-  --pink: #ef4b7d;
-  --purple: #6d3fa0;
-  --yellow: #f5c518;
-  --orange: #f28a2e;
-  --teal: #1f8a7a;
-  --cream: #fdf6ec;
-  --card: #ffffff;
-  --line: #ece3d8;
-  --text: #23263f;
-  --muted: #7b7790;
+  /* ------------------------------------------------------------------
+     Paleta do Play de Todas: a noite na areia, sob a luz da quadra.
+     As cores saem do logo -- roxo, rosa e laranja de por do sol -- sobre
+     um azul de noite. Tema escuro unico e de proposito: o app e usado na
+     quadra, no escuro, com o celular na mao.
+     ------------------------------------------------------------------ */
+  --noite:   #0e1230;  /* fundo da tela */
+  --noite-2: #161c46;  /* segundo plano, topo e barras */
+  --card:    #1d2352;  /* superficie dos cartoes */
+  --card-2:  #232a5e;  /* superficie de dentro do cartao */
+  --line:    rgba(255, 246, 238, 0.14);
+  --line-2:  rgba(255, 246, 238, 0.28);
+
+  --text:    #fff6ee;  /* texto principal, creme e nao branco puro */
+  --muted:   #a79fc4;  /* cinza puxado para o roxo do logo */
+
+  --pink:    #ff5c8a;
+  --purple:  #8b5cf0;
+  --yellow:  #ffc940;
+  --orange:  #ff8a3d;
+  --teal:    #2ed3b7;
+  --danger:  #ff6b6b;
+  --por-do-sol: linear-gradient(100deg, #8b5cf0 0%, #ff5c8a 52%, #ff8a3d 100%);
+
+  /* fundos suaves de cada cor, para avisos e etiquetas */
+  --pink-suave:   rgba(255, 92, 138, 0.16);
+  --purple-suave: rgba(139, 92, 240, 0.18);
+  --yellow-suave: rgba(255, 201, 64, 0.14);
+  --orange-suave: rgba(255, 138, 61, 0.14);
+  --teal-suave:   rgba(46, 211, 183, 0.14);
+  --danger-suave: rgba(255, 107, 107, 0.15);
+
+  /* nomes antigos, mantidos para nao caçar cada uso um por um */
+  --navy:   #0e1230;
+  --navy-2: #161c46;
+  --cream:  #0e1230;
+
   --radius: 18px;
-  --shadow: 0 8px 24px rgba(20, 26, 60, 0.08);
-  color-scheme: light;
+  --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -47,8 +72,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   /* instalado na tela de inicio o app ocupa a area do relogio/notch:
      sem esta folga o botao Entrar fica embaixo da barra de status */
   padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
-  background: linear-gradient(135deg, var(--navy) 0%, #2a2160 100%);
-  color: #fff;
+  background: linear-gradient(135deg, var(--noite-2) 0%, #2f2570 100%);
+  color: var(--text);
   border-radius: 0 0 22px 22px;
   box-shadow: 0 6px 20px rgba(20, 26, 60, 0.25);
 }
@@ -63,14 +88,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .topbar .sub {
   margin-top: 2px;
   font-size: 12px;
-  color: #c9c6e0;
+  color: var(--muted);
   display: flex;
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
 .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-.dot.on { background: #4ade80; }
+.dot.on { background: var(--teal); }
 .dot.off { background: var(--orange); }
 
 /* ---------- navegacao ---------- */
@@ -79,7 +104,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   left: 0; right: 0; bottom: 0;
   z-index: 30;
   display: flex;
-  background: #fff;
+  background: var(--card);
   border-top: 1px solid var(--line);
   padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
   box-shadow: 0 -4px 18px rgba(20, 26, 60, 0.08);
@@ -100,7 +125,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .tabbar button .ic { font-size: 19px; line-height: 1; }
-.tabbar button.active { color: var(--pink); background: #fdeef3; }
+.tabbar button.active { color: var(--pink); background: var(--pink-suave); }
 
 /* ---------- blocos ---------- */
 .card {
@@ -111,10 +136,12 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 14px;
   margin-bottom: 14px;
 }
+/* cartao de destaque: no tema escuro ele nao pode ser "mais escuro",
+   entao ganha a borda do por do sol para se separar dos outros */
 .card.dark {
-  background: var(--navy);
-  color: #fff;
-  border-color: transparent;
+  background: var(--noite-2);
+  color: var(--text);
+  border: 1px solid var(--line-2);
 }
 .section-title {
   display: flex;
@@ -127,7 +154,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   margin: 4px 2px 10px;
   color: var(--navy);
 }
-.card.dark .section-title { color: #fff; }
+.card.dark .section-title { color: var(--text); }
 .muted { color: var(--muted); }
 .small { font-size: 12px; }
 .tiny { font-size: 11px; }
@@ -148,7 +175,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   font-weight: 700;
   font-size: 14px;
   background: var(--navy);
-  color: #fff;
+  color: var(--text);
   cursor: pointer;
   transition: filter .15s, transform .05s;
 }
@@ -157,20 +184,20 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .btn.pink { background: var(--pink); }
 .btn.purple { background: var(--purple); }
 .btn.teal { background: var(--teal); }
-.btn.ghost { background: #f2eee9; color: var(--navy); }
-.btn.danger { background: #fdeaea; color: #c02626; }
+.btn.ghost { background: var(--card-2); color: var(--text); border: 1px solid var(--line); }
+.btn.danger { background: var(--danger-suave); color: var(--danger); }
 .btn.sm { padding: 7px 11px; font-size: 12.5px; border-radius: 10px; }
 .btn.block { width: 100%; }
 
 .input, .select {
   width: 100%;
   border: 1px solid var(--line);
-  background: #fbf8f4;
+  background: var(--card-2);
   border-radius: 12px;
   padding: 11px 12px;
   outline: none;
 }
-.input:focus, .select:focus { border-color: var(--pink); background: #fff; }
+.input:focus, .select:focus { border-color: var(--pink); background: var(--card-2); }
 label.field { display: block; }
 label.field > span {
   display: block;
@@ -184,7 +211,7 @@ label.field > span {
 
 .chip {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--card);
   border-radius: 999px;
   padding: 7px 12px;
   font-size: 13px;
@@ -194,7 +221,7 @@ label.field > span {
   align-items: center;
   gap: 7px;
 }
-.chip.on { background: var(--pink); border-color: var(--pink); color: #fff; }
+.chip.on { background: var(--pink); border-color: var(--pink); color: var(--noite); }
 .chip.off { opacity: .75; }
 
 .badge {
@@ -206,17 +233,17 @@ label.field > span {
   letter-spacing: .4px;
   text-transform: uppercase;
 }
-.badge.open { background: #fff3d6; color: #96690a; }
-.badge.finished { background: #e3f6ef; color: var(--teal); }
+.badge.open { background: var(--yellow-suave); color: var(--yellow); }
+.badge.finished { background: var(--teal-suave); color: var(--teal); }
 /* play avulso: acontece, conta no historico, mas nao vale para o campeonato */
-.badge.avulso { background: #ede7fb; color: var(--purple); }
+.badge.avulso { background: var(--purple-suave); color: var(--purple); }
 
 /* ---------- avatar ---------- */
 .avatar {
   border-radius: 50%;
   object-fit: cover;
   background: linear-gradient(135deg, var(--purple), var(--pink));
-  color: #fff;
+  color: var(--text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -239,11 +266,11 @@ label.field > span {
   border-radius: 14px 14px 0 0;
   padding: 8px 4px 10px;
   font-weight: 800;
-  color: #fff;
+  color: var(--noite);
 }
-.podium .p1 .base { background: linear-gradient(180deg, #f5c518, #e0a500); height: 78px; }
-.podium .p2 .base { background: linear-gradient(180deg, #c9cede, #a7adc2); height: 58px; }
-.podium .p3 .base { background: linear-gradient(180deg, #e0a06a, #c2814b); height: 46px; }
+.podium .p1 .base { background: linear-gradient(180deg, var(--yellow), #e0a500); height: 78px; }
+.podium .p2 .base { background: linear-gradient(180deg, #cdd3e6, #9aa1bd); height: 58px; }
+.podium .p3 .base { background: linear-gradient(180deg, #f0a86e, var(--orange)); height: 46px; }
 .podium .pos { font-size: 22px; }
 .podium .pts { font-size: 11px; font-weight: 700; opacity: .9; }
 .podium .nm { font-size: 12px; font-weight: 700; margin-top: 6px; }
@@ -265,8 +292,8 @@ label.field > span {
   flex: none;
 }
 .rank-row.top1 .rank-pos { color: var(--yellow); }
-.rank-row.top2 .rank-pos { color: #98a0b8; }
-.rank-row.top3 .rank-pos { color: #c2814b; }
+.rank-row.top2 .rank-pos { color: var(--muted); }
+.rank-row.top3 .rank-pos { color: var(--orange); }
 .rank-pts { font-weight: 800; color: var(--pink); font-size: 17px; }
 
 /* ---------- partidas ---------- */
@@ -275,9 +302,9 @@ label.field > span {
   border-radius: 14px;
   padding: 10px 12px;
   margin-bottom: 10px;
-  background: #fff;
+  background: var(--card);
 }
-.match.done { background: #fbfaf8; border-color: #e5f0ea; }
+.match.done { background: var(--noite-2); border-color: var(--line); }
 .match-head {
   display: flex;
   justify-content: space-between;
@@ -299,7 +326,7 @@ label.field > span {
   border-radius: 10px;
   padding: 7px 4px;
   font-weight: 800;
-  background: #fbf8f4;
+  background: var(--card-2);
 }
 .vs { text-align: center; font-size: 10px; font-weight: 800; color: var(--muted); letter-spacing: 2px; }
 
@@ -321,7 +348,7 @@ label.field > span {
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .stat-box {
-  background: #fbf8f4;
+  background: var(--card-2);
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px;
@@ -344,9 +371,9 @@ label.field > span {
   font-size: 13px;
   margin-bottom: 12px;
 }
-.banner.warn { background: #fff3d6; color: #7a5606; }
-.banner.err { background: #fdeaea; color: #a02020; }
-.banner.info { background: #eef0fb; color: #3b3f75; }
+.banner.warn { background: var(--yellow-suave); color: var(--yellow); }
+.banner.err { background: var(--danger-suave); color: var(--danger); }
+.banner.info { background: var(--purple-suave); color: var(--text); }
 
 .toast {
   position: fixed;
@@ -354,7 +381,7 @@ label.field > span {
   transform: translateX(-50%);
   bottom: calc(78px + env(safe-area-inset-bottom));
   background: var(--navy);
-  color: #fff;
+  color: var(--text);
   padding: 10px 16px;
   border-radius: 999px;
   font-size: 13px;
@@ -374,7 +401,7 @@ label.field > span {
   padding: 12px;
 }
 .modal {
-  background: #fff;
+  background: var(--card);
   border-radius: 20px;
   width: 100%;
   max-width: 480px;
@@ -388,12 +415,12 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 
 /* status maximo: 10 plays seguidos vencendo */
 .row.queen {
-  background: linear-gradient(135deg, #fff6d9, #ffe9b0);
-  border: 1px solid #f0c65a;
+  background: linear-gradient(135deg, var(--yellow-suave), var(--yellow-suave));
+  border: 1px solid var(--yellow);
   border-radius: 14px;
   padding: 8px 10px;
 }
-.row.queen .badge.open { background: #fff; color: #8a6300; }
+.row.queen .badge.open { background: var(--noite-2); color: var(--yellow); }
 
 /* ---------- lancamento de placar no celular ---------- */
 .round-nav { padding: 12px; position: sticky; top: calc(74px + env(safe-area-inset-top)); z-index: 15; }
@@ -412,17 +439,17 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   height: 40px;
   border-radius: 12px;
   border: 1px solid var(--line);
-  background: #fbf8f4;
+  background: var(--card-2);
   font-weight: 800;
   font-size: 15px;
   color: var(--muted);
   cursor: pointer;
 }
-.round-chip.done { background: #e3f6ef; border-color: #bde5d7; color: var(--teal); }
-.round-chip.on { background: var(--pink); border-color: var(--pink); color: #fff; }
+.round-chip.done { background: var(--teal-suave); border-color: var(--teal); color: var(--teal); }
+.round-chip.on { background: var(--pink); border-color: var(--pink); color: var(--noite); }
 .btn.step { width: 40px; height: 40px; padding: 0; font-size: 20px; line-height: 1; flex: none; }
 
-.match.live { border-color: #f6d3de; box-shadow: 0 2px 10px rgba(239, 75, 125, .08); }
+.match.live { border-color: var(--pink); box-shadow: 0 2px 10px rgba(239, 75, 125, .08); }
 
 .pick-team {
   display: flex;
@@ -433,11 +460,11 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   padding: 10px 12px;
   border: 1.5px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--card);
   cursor: pointer;
   text-align: left;
 }
-.pick-team:active { background: #fdeef3; border-color: var(--pink); }
+.pick-team:active { background: var(--pink-suave); border-color: var(--pink); }
 /* placar so depois de "partida iniciada": sem isso da para lancar por engano
    a partida da quadra errada, e ela fica gravada sem quadra e sem horario */
 .pick-team:disabled { opacity: .5; cursor: not-allowed; }
@@ -446,7 +473,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .pick-tag {
   flex: none;
   background: var(--pink);
-  color: #fff;
+  color: var(--noite);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 12px;
@@ -461,13 +488,13 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   min-height: 54px;
   border-radius: 14px;
   border: 1.5px solid var(--line);
-  background: #fbf8f4;
+  background: var(--card-2);
   font-size: 20px;
   font-weight: 800;
   color: var(--navy);
   cursor: pointer;
 }
-.game-btn:active { background: var(--pink); border-color: var(--pink); color: #fff; }
+.game-btn:active { background: var(--pink); border-color: var(--pink); color: var(--noite); }
 
 .score-box {
   flex: none;
@@ -509,7 +536,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .sync .dot { width: 7px; height: 7px; }
 .sync.saving .dot { background: var(--yellow); }
 .sync.pending .dot { background: var(--orange); }
-.sync.saved .dot { background: #4ade80; }
+.sync.saved .dot { background: var(--teal); }
 
 /* no computador a barra de abas acompanha a coluna do app */
 @media (min-width: 760px) {
@@ -538,12 +565,12 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 /* opção destacada dentro de um formulário */
 .toggle-card {
   border: 1.5px solid var(--pink);
-  background: #fdeef3;
+  background: var(--pink-suave);
   border-radius: 14px;
   padding: 10px 12px;
 }
 .toggle-card input[type='checkbox'] { width: 20px; height: 20px; accent-color: var(--pink); flex: none; }
-.input:disabled { background: #f1ece6; color: var(--muted); }
+.input:disabled { background: var(--card-2); color: var(--muted); }
 
 /* linha de decisão do fechamento do mês */
 .bet-row {
@@ -551,7 +578,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 10px;
-  background: #fbf8f4;
+  background: var(--card-2);
 }
 
 /* campo numérico com − e + (bem melhor que digitar no celular) */
@@ -560,21 +587,21 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   align-items: stretch;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fbf8f4;
+  background: var(--card-2);
   overflow: hidden;
 }
 .stepper button {
   flex: none;
   width: 42px;
   border: 0;
-  background: #f1ebe3;
+  background: var(--card-2);
   color: var(--navy);
   font-size: 22px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
 }
-.stepper button:active:not(:disabled) { background: var(--pink); color: #fff; }
+.stepper button:active:not(:disabled) { background: var(--pink); color: var(--noite); }
 .stepper button:disabled { opacity: .3; cursor: not-allowed; }
 .stepper input {
   flex: 1;
@@ -589,7 +616,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   outline: none;
 }
 .stepper.off { opacity: .6; }
-.stepper.off button { background: #ece5dc; }
+.stepper.off button { background: var(--card-2); }
 .hint.aviso { color: var(--orange); font-weight: 700; }
 
 /* selo do campeonato na tela inicial */
@@ -597,8 +624,8 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   display: flex;
   align-items: center;
   gap: 14px;
-  background: linear-gradient(135deg, #fff 60%, #fdeef3);
-  border-color: #f3dbe4;
+  background: linear-gradient(135deg, var(--card) 60%, var(--pink-suave));
+  border-color: var(--pink-suave);
 }
 .hero-txt { min-width: 0; }
 .hero-nome {
@@ -616,7 +643,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .segmented {
   display: flex;
   gap: 4px;
-  background: #f2ece5;
+  background: var(--card-2);
   border-radius: 14px;
   padding: 4px;
 }
@@ -631,12 +658,12 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   color: var(--muted);
   cursor: pointer;
 }
-.segmented button.on { background: #fff; color: var(--navy); box-shadow: 0 2px 6px rgba(20,26,60,.10); }
+.segmented button.on { background: var(--por-do-sol); color: var(--noite); }
 
 .barra {
   height: 10px;
   border-radius: 99px;
-  background: #f0e9e1;
+  background: var(--card-2);
   overflow: hidden;
 }
 .barra i {
@@ -649,7 +676,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   display: block;
   height: 5px;
   border-radius: 99px;
-  background: #f0e9e1;
+  background: var(--card-2);
   overflow: hidden;
   margin: 5px 0 4px;
 }
@@ -663,13 +690,13 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   text-align: left;
   border: 1px solid var(--line);
   border-radius: 14px;
-  background: #fff;
+  background: var(--card);
   padding: 10px;
   cursor: pointer;
 }
-.duo-row:active { background: #fdeef3; border-color: var(--pink); }
+.duo-row:active { background: var(--pink-suave); border-color: var(--pink); }
 .duo-fotos { display: flex; flex: none; }
-.duo-fotos > :last-child { margin-left: -10px; border: 2px solid #fff; border-radius: 50%; }
+.duo-fotos > :last-child { margin-left: -10px; border: 2px solid var(--card); border-radius: 50%; }
 .duo-nomes { display: block; font-weight: 700; font-size: 14px; }
 .duo-pct { flex: none; font-weight: 800; color: var(--pink); font-size: 16px; }
 
@@ -678,9 +705,9 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 10px;
-  background: #fbf8f4;
+  background: var(--card-2);
 }
-.import-row.atencao { border-color: var(--orange); background: #fff6ec; }
+.import-row.atencao { border-color: var(--orange); background: var(--orange-suave); }
 textarea.input { line-height: 1.45; }
 
 /* cartão do próximo play, na tela inicial */
@@ -692,7 +719,7 @@ textarea.input { line-height: 1.45; }
   text-align: left;
   cursor: pointer;
   border: 1.5px solid var(--pink);
-  background: linear-gradient(135deg, #fff, #fdeef3);
+  background: linear-gradient(135deg, var(--card), var(--pink-suave));
 }
 .prox-selo {
   flex: none;
@@ -700,7 +727,7 @@ textarea.input { line-height: 1.45; }
   height: 46px;
   border-radius: 14px;
   background: var(--pink);
-  color: #fff;
+  color: var(--noite);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -721,10 +748,10 @@ textarea.input { line-height: 1.45; }
 .versao {
   text-align: center;
   font-size: 10.5px;
-  color: #b3aec2;
+  color: var(--muted);
   margin: 18px 0 4px;
 }
-.versao .linkish { font-size: 10.5px; color: #b3aec2; text-transform: none; letter-spacing: 0; text-decoration: underline; }
+.versao .linkish { font-size: 10.5px; color: var(--muted); text-transform: none; letter-spacing: 0; text-decoration: underline; }
 
 /* troca de jogadora e quadra travada */
 .nome-troca {
@@ -738,24 +765,24 @@ textarea.input { line-height: 1.45; }
 }
 .nome-troca.ocupada { color: var(--orange); border-bottom-color: var(--orange); }
 .travada {
-  background: #fff6ec;
+  background: var(--orange-suave);
   border: 1px solid var(--orange);
   border-radius: 12px;
   padding: 10px;
   margin-bottom: 10px;
   font-size: 12.5px;
-  color: #8a4b06;
+  color: var(--orange);
 }
 .match.travada-borda { border-color: var(--orange); }
 
 /* partida em quadra agora */
 .match.em-quadra {
   border-color: var(--teal);
-  background: #f2fbfa;
+  background: var(--teal-suave);
 }
 
 /* ---------- fila de partidas (o play nao tem mais rodadas) ---------- */
-.match.vazia { background: #fbf8f4; border-style: dashed; }
+.match.vazia { background: var(--card-2); border-style: dashed; }
 
 /* etiqueta de grupo, quando o play e dividido por nivel */
 .grupo-tag {
@@ -765,7 +792,7 @@ textarea.input { line-height: 1.45; }
   border-radius: 999px;
   font-size: 10px;
   font-weight: 800;
-  color: #fff;
+  color: var(--noite);
   vertical-align: middle;
 }
 .grupo-tag.g1 { background: var(--pink); }
@@ -779,7 +806,7 @@ textarea.input { line-height: 1.45; }
   border-left: 4px solid var(--pink);
   border-radius: 12px;
   padding: 8px 10px;
-  background: #fbf8f4;
+  background: var(--card-2);
 }
 .grupo-nome {
   font-size: 11px;
@@ -833,7 +860,7 @@ textarea.input { line-height: 1.45; }
 .names .ocupada { color: var(--orange); font-weight: 800; }
 
 /* opcao "play avulso" no formulario, em roxo para nao virar mais um cartao rosa */
-.toggle-card.avulso { border-color: var(--purple); background: #f3eefc; }
+.toggle-card.avulso { border-color: var(--purple); background: var(--purple-suave); }
 .toggle-card.avulso input[type='checkbox'] { accent-color: var(--purple); }
 
 /* finalizar o mes na mao */
