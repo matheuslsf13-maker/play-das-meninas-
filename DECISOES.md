@@ -27,12 +27,25 @@ mudou de dia — de sexta para **segunda**. Por isso o vocabulário das sequênc
 é **neutro de dia** ("semanas seguidas no pódio", não "sextas"): amarrar o
 mini-game a um dia da semana já custou uma rodada de retrabalho.
 
-⚠️ **O logo é o único lugar que não acompanha sozinho.** A arte trazia
-"PLAY da Sexta" desenhado na imagem, e imagem não se edita por código — o
-arquivo saiu de `public/`. Enquanto `public/logo.png` não existir, o selo
-desenhado em `ui.tsx` assume e as artes de fechamento escrevem o nome como
-texto. **Basta soltar o logo novo em `public/logo.png`** que tudo volta a usar
-a imagem, sem mexer em código.
+**O logo novo veio de uma foto de tela**, não do arquivo original. Foi extraído
+por código (`PIL`): correção de perspectiva pelos quatro cantos do card,
+ponto branco medido no próprio fundo, e o reflexo da tela removido pela regra
+"claro **e** sem cor vira branco" — o desenho é saturado ou escuro, então
+sobrevive. Ficou bom, mas o teto é o teto: **se aparecer o arquivo original,
+vale trocar** (é só soltar em `public/logo.png`).
+
+⚠️ **O logo tem fundo branco e o app é escuro.** Colado direto, vira um
+quadrado branco na tela. A solução foi recortar só o emblema circular (a faixa
+de ícones do rodapé é ilegível no tamanho que o app usa de qualquer forma) e
+deixar o fundo transparente. O emblema traz o próprio fundo — o pôr do sol —
+então o "Play" azul-marinho continua legível sobre ele. Funciona em qualquer
+cor de fundo.
+
+O arquivo tem 216 KB (o anterior tinha 262 KB). Uma versão paletizada de 41 KB
+foi testada e descartada: serrilha o degradê do pôr do sol.
+
+Na arte de fechamento o logo é desenhado a **232px** e não mais que isso — acima
+disso a faixa do mês desce e a **coroa do 1º lugar bate nela**.
 
 Duas coisas mudam toda semana e por isso são informadas na hora de criar o play:
 **quantas jogadoras vieram** (as meninas decidem durante a semana) e **quantas

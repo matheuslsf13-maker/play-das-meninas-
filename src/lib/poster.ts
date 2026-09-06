@@ -125,6 +125,7 @@ function cabecalho(
 
   if (logo) {
     // com o logo, ele fala por si: o nome do camp sai do texto
+    // 232 e o teto: acima disso a faixa desce e a coroa do 1o lugar bate nela
     const lado = 232
     c.drawImage(logo, W / 2 - lado / 2, 10, lado, lado)
     escreverFaixa(chapeu ? 280 : 258)
