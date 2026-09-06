@@ -163,11 +163,46 @@ No Stats, o filtro por mês acompanha o ranking (só os plays que valem) e o
 ## Status 🔥 (o atrativo do campeonato)
 
 A pergunta difícil foi: **o que mantém o status?** Ganhar a sexta seguidas vezes
-não serve. Simulações sobre 400 sextas mostraram que:
+não serve — emendar duas vitórias é raro demais, e os degraus acima de 3 nunca
+seriam alcançados.
 
-- a chance de vencer duas sextas seguidas é de só **11%** — justamente porque as
-  duplas são equilibradas de propósito;
-- logo, os degraus acima de 3 **nunca seriam alcançados** e o sistema morreria.
+> ⚠️ **Correção de uma explicação errada que circulou aqui.** A versão anterior
+> deste arquivo dizia que vencer o dia era "quase sorteio, porque as duplas são
+> equilibradas de propósito". **Isso está errado**, e o dono do projeto foi quem
+> apontou: se todas jogam com todas, as melhores sobem ao pódio mesmo.
+>
+> O raciocínio falho era supor que o app equilibra as **duplas**. Ele não pode:
+> no rodízio completo a parceira de cada partida já está determinada, e ao fim
+> do dia **todo mundo joga com todo mundo uma vez** — a soma da força das
+> parceiras é idêntica para todas. O que o app escolhe é só a **adversária**.
+>
+> Medido com o algoritmo atual (600 sextas simuladas, 16 jogadoras, forças
+> espalhadas de 0,8 a 3,2 pontos por partida):
+>
+> | | a melhor jogadora | acaso puro |
+> |---|---|---|
+> | termina no pódio | **61%** | 18% |
+> | vence o dia | **31%** | 6% |
+> | posição média | **3,5º de 16** | 8,5º |
+>
+> Ou seja: habilidade aparece, e muito — de 3 a 5 vezes mais que o acaso.
+> O número exato depende de quão diferentes os níveis realmente são; num cenário
+> de níveis mais distantes a melhor sobe a 72% de pódio.
+
+O que sustenta o status, então, não é o dia ser aleatório — é que **nem a melhor
+da quadra fica no pódio toda semana** (fica fora em 3 a 5 de cada 10 sextas) e
+**o pódio inteiro quase nunca é o top 3 real** (8% das vezes). Emendar várias
+sextas seguidas continua sendo difícil: a campeã de um dia repete no dia
+seguinte em **16% a 27%** das vezes.
+
+⚠️ **No modo em grupos isso muda de figura.** Como cada grupo é um rodízio
+fechado, quem domina o grupo 2 pontua tanto quanto quem domina o grupo 1 — e o
+ranking do dia é um só. Medido: com 16 jogadoras em 2 grupos de 8, a melhor de
+todas cai para **32% de pódio**; com 24 em 3 grupos, para **17%** (contra 12% de
+puro acaso). Não é bug, é consequência do formato — e até democratiza o status,
+porque uma jogadora do grupo mais fraco tem a mesma chance de subir. Mas **a
+campeã do dia num play em grupos não é "a melhor da noite"**, e sim quem melhor
+foi dentro do próprio grupo.
 
 Quatro regras candidatas foram medidas. A escolhida foi **pódio do dia (top 3)
 + 1 vida**:
