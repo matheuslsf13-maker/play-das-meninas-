@@ -311,9 +311,16 @@ sozinho, 4 conferidos na mão.
 ## Pendências
 
 - [ ] **Rotacionar a secret key do Supabase** (segurança, item mais importante).
-- [ ] **Apresentação para o grupo** — pedida ("pode ser um vídeo"), nunca feita.
-      Deve apresentar o sistema, o que dá para consultar e principalmente o
-      **sistema de sequências**, que é o atrativo do campeonato.
+- [x] ~~**Apresentação para o grupo**~~ — feita como uma **página que roda
+      sozinha**, em 12 cenas (o que é o app, instalar no iPhone e no Android,
+      como o play funciona, a pontuação, o mini-game dos status e a Duquesa com
+      a premiação secreta). Dá para mandar o link ou gravar a tela dela para
+      virar vídeo. Publicada como artifact — o link está com o dono do projeto.
+- [ ] **Reenviar o link no grupo.** O repositório foi renomeado para
+      `play-da-sexta` e o link antigo (`play-das-meninas-`) dá **404** — o
+      GitHub Pages não redireciona. Quem já tinha instalado na tela de início
+      precisa instalar de novo pelo link novo:
+      `https://matheuslsf13-maker.github.io/play-da-sexta/`
 - [ ] Mensagem pronta para o grupo pedindo que escrevam o nome completo certo na
       lista de confirmação (facilita a importação).
 - [x] ~~Rodar os scripts `04`, `05` e `06` no SQL Editor~~ — feito e conferido em
