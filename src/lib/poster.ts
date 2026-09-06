@@ -137,7 +137,7 @@ function cabecalho(
 
   c.font = '900 66px system-ui, Segoe UI, Arial, sans-serif'
   const a = 'PLAY '
-  const b = 'DE SEXTA'
+  const b = 'DA SEXTA'
   const inicio = (W - c.measureText(a).width - c.measureText(b).width) / 2
   c.textAlign = 'left'
   c.fillStyle = '#fff'

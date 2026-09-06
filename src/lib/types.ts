@@ -18,7 +18,7 @@ export type SessionStatus = 'open' | 'finished'
  */
 export type PlayFormat = 'todas' | 'grupos'
 
-/** Um "Play de Sexta": um dia de jogos. */
+/** Um "Play da Sexta": um dia de jogos. */
 export type PlaySession = {
   id: string
   date: string // YYYY-MM-DD

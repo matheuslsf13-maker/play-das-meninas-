@@ -1,3 +1,4 @@
+import { CHAVE } from '../lib/chaves'
 import type { Match, MonthClosure, PlaySession, Player, StreakChoice } from '../lib/types'
 
 /**
@@ -16,8 +17,8 @@ export type WriteOp =
   | { id: string; type: 'deleteClosure'; month: string }
   | { id: string; type: 'mergePlayers'; fromId: string; intoId: string; matches: Match[]; sessions: PlaySession[] }
 
-const QUEUE_KEY = 'play-das-meninas:queue'
-const CACHE_KEY = 'play-das-meninas:cache'
+const QUEUE_KEY = CHAVE.fila
+const CACHE_KEY = CHAVE.cache
 
 export function loadQueue(): WriteOp[] {
   try {

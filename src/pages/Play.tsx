@@ -237,7 +237,7 @@ function NewPlay({
 }) {
   const { data, saveSession, saveMatches, playerById, nameOf } = useStore()
   const [date, setDate] = useState(preset.date ?? todayISO())
-  const [title, setTitle] = useState(preset.title ?? 'Play de Sexta')
+  const [title, setTitle] = useState(preset.title ?? 'Play da Sexta')
   const [courts, setCourts] = useState(preset.courts ?? 3)
   const [format, setFormat] = useState<PlayFormat>(preset.format ?? 'todas')
   const [porGrupo, setPorGrupo] = useState(8)
@@ -293,7 +293,7 @@ function NewPlay({
       const session: PlaySession = {
         id: uid(),
         date,
-        title: title.trim() || 'Play de Sexta',
+        title: title.trim() || 'Play da Sexta',
         courts: effCourts,
         rounds: fila.length, // a coluna se chama rounds; hoje e o total de partidas
         target,

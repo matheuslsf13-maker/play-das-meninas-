@@ -1,8 +1,9 @@
 import type { AppData, Match, MonthClosure, PlaySession, Player, StreakChoice } from '../lib/types'
 import { emptyData } from '../lib/types'
+import { CHAVE } from '../lib/chaves'
 import type { Repo } from './repo'
 
-const KEY = 'play-das-meninas:v1'
+const KEY = CHAVE.dados
 
 function read(): AppData {
   try {

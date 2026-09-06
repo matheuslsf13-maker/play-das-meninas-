@@ -12,8 +12,10 @@
  * proxima partida.
  */
 
-const KEY = 'play-de-sexta:em-quadra'
-const KEY_FIM = 'play-de-sexta:fim-das-partidas'
+import { CHAVE } from './chaves'
+
+const KEY = CHAVE.emQuadra
+const KEY_FIM = CHAVE.fimDasPartidas
 
 export type Horarios = Record<string, string> // match_id -> ISO
 

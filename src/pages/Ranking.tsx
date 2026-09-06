@@ -176,7 +176,7 @@ export default function Ranking({
       <div className="card hero">
         <Logo size={92} />
         <div className="hero-txt">
-          <div className="hero-nome">Play de Sexta</div>
+          <div className="hero-nome">Play da Sexta</div>
           <div className="tiny muted">Beach Tennis · V3 Arena · <em>mais que um play, uma experiência!</em></div>
         </div>
       </div>

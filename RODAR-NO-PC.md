@@ -1,4 +1,4 @@
-# 💻 Rodar o Play de Sexta no seu computador (Windows)
+# 💻 Rodar o Play da Sexta no seu computador (Windows)
 
 Passo a passo para ter o projeto inteiro em `C:\Playdesexta` e trabalhar nele
 localmente (inclusive com o Claude Code rodando na sua máquina).
@@ -23,7 +23,7 @@ No PowerShell:
 
 ```powershell
 cd C:\
-git clone https://github.com/matheuslsf13-maker/play-das-meninas-.git Playdesexta
+git clone https://github.com/matheuslsf13-maker/play-da-sexta.git Playdesexta
 cd C:\Playdesexta
 npm install
 ```

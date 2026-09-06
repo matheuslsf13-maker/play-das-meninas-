@@ -11,10 +11,15 @@ está *por que ele funciona assim*.
 
 ## O campeonato
 
-**Play de Sexta**, beach tennis feminino na **V3 Arena**, toda sexta.
-Não confundir com "Play das Meninas" — esse é um campeonato **concorrente**
-(o repositório se chama `play-das-meninas-` por causa do nome antigo, mas o
-nome do produto é Play de Sexta).
+**Play da Sexta**, beach tennis **feminino** na **V3 Arena**, toda sexta.
+
+Não confundir com "Play das Meninas" — esse é um campeonato **concorrente**, e
+o nome dele **não pode aparecer em lugar nenhum**. Já apareceu em três: no nome
+do repositório (e portanto no link que vai para o grupo), no `package.json` e
+nas chaves do `localStorage`. Tudo renomeado para `play-da-sexta`.
+
+O nome também estava escrito errado dentro do app: "Play **de** Sexta", enquanto
+o logo sempre trouxe "PLAY **da** Sexta". Vale o logo.
 
 Duas coisas mudam toda semana e por isso são informadas na hora de criar o play:
 **quantas jogadoras vieram** (as meninas decidem durante a semana) e **quantas

@@ -1,7 +1,7 @@
 {
-  "name": "Play de Sexta — Beach Tennis",
-  "short_name": "Play de Sexta",
-  "description": "Duplas equilibradas, placares e ranking do Play de Sexta.",
+  "name": "Play da Sexta — Beach Tennis",
+  "short_name": "Play da Sexta",
+  "description": "Duplas equilibradas, placares e ranking do Play da Sexta.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

@@ -1,5 +1,5 @@
 -- ============================================================
---  Play de Sexta — play avulso
+--  Play da Sexta — play avulso
 --  Rode no SQL Editor do Supabase (depois dos scripts 01 a 05).
 --
 --  Marca se o play vale para o campeonato. Um play avulso (uma segunda

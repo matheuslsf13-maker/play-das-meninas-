@@ -1,5 +1,5 @@
 -- ============================================================
---  Play de Sexta — fila de partidas, modo em grupos e
+--  Play da Sexta — fila de partidas, modo em grupos e
 --  fechamento de mês na mão.
 --  Rode no SQL Editor do Supabase (depois dos scripts 01 a 04).
 --

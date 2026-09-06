@@ -1,5 +1,5 @@
 -- ============================================================
---  Play das Meninas — decisões de fechamento do mês
+--  Play da Sexta — decisões de fechamento do mês
 --  Rode este script no SQL Editor do Supabase (depois do schema.sql).
 --  Guarda a escolha de cada jogadora que fecha o mês em chamas:
 --  sacar o bônus acumulado agora, ou continuar apostando.

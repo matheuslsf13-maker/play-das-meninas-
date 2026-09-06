@@ -1,4 +1,4 @@
-# Play de Sexta — guia rápido do projeto
+# Play da Sexta — guia rápido do projeto
 
 App do campeonato de **beach tennis** feminino da **V3 Arena**, jogado toda
 sexta. Monta duplas equilibradas, lança placares, fecha o dia e o mês, e mostra

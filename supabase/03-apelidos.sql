@@ -1,5 +1,5 @@
 -- ============================================================
---  Play de Sexta — apelidos das jogadoras
+--  Play da Sexta — apelidos das jogadoras
 --  Rode no SQL Editor do Supabase (depois dos scripts 01 e 02).
 --  Guarda as grafias que a lista do grupo já usou para cada atleta,
 --  para a importação reconhecer sozinha na próxima vez.

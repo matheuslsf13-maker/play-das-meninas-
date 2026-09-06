@@ -76,7 +76,7 @@ export function Logo({ size = 64 }: { size?: number }) {
     return (
       <img
         src={`${import.meta.env.BASE_URL}logo.png`}
-        alt="Play de Sexta"
+        alt="Play da Sexta"
         width={size}
         height={size}
         style={{ width: size, height: size, objectFit: 'contain', flex: 'none' }}
@@ -85,7 +85,7 @@ export function Logo({ size = 64 }: { size?: number }) {
     )
   }
   return (
-    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flex: 'none' }} aria-label="Play de Sexta">
+    <svg width={size} height={size} viewBox="0 0 100 100" style={{ flex: 'none' }} aria-label="Play da Sexta">
       <defs>
         <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#f5c518" />
