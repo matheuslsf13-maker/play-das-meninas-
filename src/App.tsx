@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Logo, Modal, Toast, useToast } from './components/ui'
 import { useStore } from './lib/store'
+import { aplicarTema, temaSalvo, type Tema } from './lib/tema'
 import Play from './pages/Play'
 import Players from './pages/Players'
 import Ranking from './pages/Ranking'
@@ -31,7 +32,14 @@ export default function App() {
     window.scrollTo(0, 0)
   }, [tab])
   const [login, setLogin] = useState(false)
+  const [tema, setTema] = useState<Tema>(() => temaSalvo())
   const { msg, show } = useToast()
+
+  function trocarTema() {
+    const novo: Tema = tema === 'escuro' ? 'claro' : 'escuro'
+    aplicarTema(novo)
+    setTema(novo)
+  }
 
   return (
     <div className="app">
@@ -55,6 +63,14 @@ export default function App() {
               )}
             </div>
           </div>
+          <button
+            className="bt-tema"
+            onClick={trocarTema}
+            title={tema === 'escuro' ? 'Mudar para o modo diurno' : 'Mudar para o modo noturno'}
+            aria-label={tema === 'escuro' ? 'Mudar para o modo diurno' : 'Mudar para o modo noturno'}
+          >
+            {tema === 'escuro' ? '☀️' : '🌙'}
+          </button>
           {online && (
             userEmail
               ? <button className="btn ghost sm" onClick={() => void signOut()}>Sair</button>

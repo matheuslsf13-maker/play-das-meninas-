@@ -23,6 +23,8 @@ export const CHAVE = {
   emQuadra: 'play-de-todas:em-quadra',
   /** Quando cada partida terminou (alimenta o "fora ha mais tempo"). */
   fimDasPartidas: 'play-de-todas:fim-das-partidas',
+  /** Modo diurno ou noturno escolhido por quem usa. */
+  tema: 'play-de-todas:tema',
 } as const
 
 const RENOMEADAS: [antiga: string, nova: string][] = [

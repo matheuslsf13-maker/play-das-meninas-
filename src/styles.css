@@ -1,20 +1,68 @@
 :root {
-  /* ------------------------------------------------------------------
-     Paleta do Play de Todas: a noite na areia, sob a luz da quadra.
-     As cores saem do logo -- roxo, rosa e laranja de por do sol -- sobre
-     um azul de noite. Tema escuro unico e de proposito: o app e usado na
-     quadra, no escuro, com o celular na mao.
-     ------------------------------------------------------------------ */
-  --noite:   #0e1230;  /* fundo da tela */
-  --noite-2: #161c46;  /* segundo plano, topo e barras */
-  --card:    #1d2352;  /* superficie dos cartoes */
-  --card-2:  #232a5e;  /* superficie de dentro do cartao */
+  /* ==================================================================
+     DOIS TEMAS
+
+     `:root` traz o tema CLARO e `[data-tema="escuro"]` troca so os
+     valores -- nenhum componente sabe qual tema esta valendo, todos leem
+     os mesmos nomes. Quem escolhe e a pessoa, no botao do cabecalho, e a
+     escolha fica guardada no proprio celular.
+
+     Duas cores NAO mudam de tema, e por isso tem nome proprio:
+     `--sempre-claro` e `--sempre-escuro`. Sao o texto de superficies que
+     ja tem cor propria nos dois temas -- o cabecalho escuro, o selo rosa,
+     o degrau dourado do podio. Sem elas, o texto do cabecalho sumia ao
+     trocar de tema (foi exatamente esse o bug quando o app virou escuro).
+     ================================================================== */
+
+  /* ---- superficies e texto (tema claro) ---- */
+  --fundo:   #fdf6ec;
+  --fundo-2: #fffaf3;
+  --card:    #ffffff;
+  --card-2:  #f9f2e8;
+  --line:    #ebe0d1;
+  --line-2:  #d8c9b5;
+  --text:    #1b1f42;
+  --muted:   #6f6a86;
+
+  /* ---- marca: as cores do logo ---- */
+  --pink:    #ec2c7f;
+  --purple:  #4a3a94;
+  --yellow:  #f0a800;
+  --orange:  #f47b28;
+  --teal:    #1f8fa0;
+  --danger:  #d63a4a;
+  --por-do-sol: linear-gradient(100deg, #4a3a94 0%, #ec2c7f 52%, #f0a800 100%);
+
+  /* ---- fundos suaves de cada cor ---- */
+  --pink-suave:   rgba(236, 44, 127, 0.10);
+  --purple-suave: rgba(74, 58, 148, 0.10);
+  --yellow-suave: rgba(240, 168, 0, 0.14);
+  --orange-suave: rgba(244, 123, 40, 0.13);
+  --teal-suave:   rgba(31, 143, 160, 0.12);
+  --danger-suave: rgba(214, 58, 74, 0.11);
+
+  /* ---- as duas que nao mudam de tema ---- */
+  --sempre-claro:  #fff6ee;
+  --sempre-escuro: #14183a;
+
+  --radius: 18px;
+  --shadow: 0 8px 24px rgba(20, 26, 60, 0.10);
+  color-scheme: light;
+}
+
+:root[data-tema="escuro"] {
+  /* a noite na areia, sob a luz da quadra */
+  --fundo:   #0e1230;
+  --fundo-2: #161c46;
+  --card:    #1d2352;
+  --card-2:  #232a5e;
   --line:    rgba(255, 246, 238, 0.14);
   --line-2:  rgba(255, 246, 238, 0.28);
+  --text:    #fff6ee;
+  /* cinza puxado para o roxo do logo: escolhido, nao herdado */
+  --muted:   #a79fc4;
 
-  --text:    #fff6ee;  /* texto principal, creme e nao branco puro */
-  --muted:   #a79fc4;  /* cinza puxado para o roxo do logo */
-
+  /* no escuro a marca precisa de mais brilho para nao apagar */
   --pink:    #ff5c8a;
   --purple:  #8b5cf0;
   --yellow:  #ffc940;
@@ -23,7 +71,6 @@
   --danger:  #ff6b6b;
   --por-do-sol: linear-gradient(100deg, #8b5cf0 0%, #ff5c8a 52%, #ff8a3d 100%);
 
-  /* fundos suaves de cada cor, para avisos e etiquetas */
   --pink-suave:   rgba(255, 92, 138, 0.16);
   --purple-suave: rgba(139, 92, 240, 0.18);
   --yellow-suave: rgba(255, 201, 64, 0.14);
@@ -31,12 +78,6 @@
   --teal-suave:   rgba(46, 211, 183, 0.14);
   --danger-suave: rgba(255, 107, 107, 0.15);
 
-  /* nomes antigos, mantidos para nao caçar cada uso um por um */
-  --navy:   #0e1230;
-  --navy-2: #161c46;
-  --cream:  #0e1230;
-
-  --radius: 18px;
   --shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
@@ -49,7 +90,7 @@ body {
   margin: 0;
   overscroll-behavior-y: none; /* sem "puxar" a pagina no iPhone */
   -webkit-tap-highlight-color: transparent;
-  background: var(--cream);
+  background: var(--fundo);
   color: var(--text);
   font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -72,7 +113,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   /* instalado na tela de inicio o app ocupa a area do relogio/notch:
      sem esta folga o botao Entrar fica embaixo da barra de status */
   padding: calc(14px + env(safe-area-inset-top)) 16px 12px;
-  background: linear-gradient(135deg, var(--noite-2) 0%, #2f2570 100%);
+  background: linear-gradient(135deg, var(--fundo-2) 0%, #2f2570 100%);
   color: var(--text);
   border-radius: 0 0 22px 22px;
   box-shadow: 0 6px 20px rgba(20, 26, 60, 0.25);
@@ -88,7 +129,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .topbar .sub {
   margin-top: 2px;
   font-size: 12px;
-  color: var(--muted);
+  /* o cabecalho e escuro nos dois temas, entao esta cor nao acompanha o tema */
+  color: rgba(255, 246, 238, .74);
   display: flex;
   gap: 8px;
   align-items: center;
@@ -139,7 +181,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* cartao de destaque: no tema escuro ele nao pode ser "mais escuro",
    entao ganha a borda do por do sol para se separar dos outros */
 .card.dark {
-  background: var(--noite-2);
+  background: var(--fundo-2);
   color: var(--text);
   border: 1px solid var(--line-2);
 }
@@ -152,7 +194,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   letter-spacing: 0.8px;
   text-transform: uppercase;
   margin: 4px 2px 10px;
-  color: var(--navy);
+  color: var(--text);
 }
 .card.dark .section-title { color: var(--text); }
 .muted { color: var(--muted); }
@@ -174,8 +216,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   padding: 11px 15px;
   font-weight: 700;
   font-size: 14px;
-  background: var(--navy);
-  color: var(--text);
+  background: var(--sempre-escuro);
+  color: var(--sempre-claro);
   cursor: pointer;
   transition: filter .15s, transform .05s;
 }
@@ -221,7 +263,7 @@ label.field > span {
   align-items: center;
   gap: 7px;
 }
-.chip.on { background: var(--pink); border-color: var(--pink); color: var(--noite); }
+.chip.on { background: var(--pink); border-color: var(--pink); color: var(--sempre-escuro); }
 .chip.off { opacity: .75; }
 
 .badge {
@@ -243,7 +285,7 @@ label.field > span {
   border-radius: 50%;
   object-fit: cover;
   background: linear-gradient(135deg, var(--purple), var(--pink));
-  color: var(--text);
+  color: var(--sempre-claro);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -266,7 +308,7 @@ label.field > span {
   border-radius: 14px 14px 0 0;
   padding: 8px 4px 10px;
   font-weight: 800;
-  color: var(--noite);
+  color: var(--sempre-escuro);
 }
 .podium .p1 .base { background: linear-gradient(180deg, var(--yellow), #e0a500); height: 78px; }
 .podium .p2 .base { background: linear-gradient(180deg, #cdd3e6, #9aa1bd); height: 58px; }
@@ -304,7 +346,7 @@ label.field > span {
   margin-bottom: 10px;
   background: var(--card);
 }
-.match.done { background: var(--noite-2); border-color: var(--line); }
+.match.done { background: var(--fundo-2); border-color: var(--line); }
 .match-head {
   display: flex;
   justify-content: space-between;
@@ -354,7 +396,7 @@ label.field > span {
   padding: 10px;
   text-align: center;
 }
-.stat-box .v { font-size: 19px; font-weight: 800; color: var(--navy); }
+.stat-box .v { font-size: 19px; font-weight: 800; color: var(--text); }
 .stat-box .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
 
 .empty {
@@ -380,8 +422,8 @@ label.field > span {
   left: 50%;
   transform: translateX(-50%);
   bottom: calc(78px + env(safe-area-inset-bottom));
-  background: var(--navy);
-  color: var(--text);
+  background: var(--sempre-escuro);
+  color: var(--sempre-claro);
   padding: 10px 16px;
   border-radius: 999px;
   font-size: 13px;
@@ -420,7 +462,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   border-radius: 14px;
   padding: 8px 10px;
 }
-.row.queen .badge.open { background: var(--noite-2); color: var(--yellow); }
+.row.queen .badge.open { background: var(--fundo-2); color: var(--yellow); }
 
 /* ---------- lancamento de placar no celular ---------- */
 .round-nav { padding: 12px; position: sticky; top: calc(74px + env(safe-area-inset-top)); z-index: 15; }
@@ -446,7 +488,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   cursor: pointer;
 }
 .round-chip.done { background: var(--teal-suave); border-color: var(--teal); color: var(--teal); }
-.round-chip.on { background: var(--pink); border-color: var(--pink); color: var(--noite); }
+.round-chip.on { background: var(--pink); border-color: var(--pink); color: var(--sempre-escuro); }
 .btn.step { width: 40px; height: 40px; padding: 0; font-size: 20px; line-height: 1; flex: none; }
 
 .match.live { border-color: var(--pink); box-shadow: 0 2px 10px rgba(239, 75, 125, .08); }
@@ -473,7 +515,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
 .pick-tag {
   flex: none;
   background: var(--pink);
-  color: var(--noite);
+  color: var(--sempre-escuro);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 12px;
@@ -491,10 +533,10 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   background: var(--card-2);
   font-size: 20px;
   font-weight: 800;
-  color: var(--navy);
+  color: var(--text);
   cursor: pointer;
 }
-.game-btn:active { background: var(--pink); border-color: var(--pink); color: var(--noite); }
+.game-btn:active { background: var(--pink); border-color: var(--pink); color: var(--sempre-escuro); }
 
 .score-box {
   flex: none;
@@ -502,7 +544,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   text-align: center;
   font-weight: 800;
   font-size: 18px;
-  color: var(--navy);
+  color: var(--text);
 }
 .pts-tag { flex: none; font-size: 11px; font-weight: 800; color: var(--pink); }
 .linkish {
@@ -595,13 +637,13 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   width: 42px;
   border: 0;
   background: var(--card-2);
-  color: var(--navy);
+  color: var(--text);
   font-size: 22px;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
 }
-.stepper button:active:not(:disabled) { background: var(--pink); color: var(--noite); }
+.stepper button:active:not(:disabled) { background: var(--pink); color: var(--sempre-escuro); }
 .stepper button:disabled { opacity: .3; cursor: not-allowed; }
 .stepper input {
   flex: 1;
@@ -658,7 +700,7 @@ hr.sep { border: 0; border-top: 1px dashed var(--line); margin: 12px 0; }
   color: var(--muted);
   cursor: pointer;
 }
-.segmented button.on { background: var(--por-do-sol); color: var(--noite); }
+.segmented button.on { background: var(--por-do-sol); color: var(--sempre-escuro); }
 
 .barra {
   height: 10px;
@@ -727,7 +769,7 @@ textarea.input { line-height: 1.45; }
   height: 46px;
   border-radius: 14px;
   background: var(--pink);
-  color: var(--noite);
+  color: var(--sempre-escuro);
   font-size: 24px;
   display: flex;
   align-items: center;
@@ -741,7 +783,7 @@ textarea.input { line-height: 1.45; }
   letter-spacing: .6px;
   color: var(--pink);
 }
-.prox-info { display: block; font-weight: 700; font-size: 14px; color: var(--navy); }
+.prox-info { display: block; font-weight: 700; font-size: 14px; color: var(--text); }
 .prox-acao { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
 
 /* rodapé discreto com a versão, para dar suporte a quem travar */
@@ -792,7 +834,7 @@ textarea.input { line-height: 1.45; }
   border-radius: 999px;
   font-size: 10px;
   font-weight: 800;
-  color: var(--noite);
+  color: var(--sempre-escuro);
   vertical-align: middle;
 }
 .grupo-tag.g1 { background: var(--pink); }
@@ -845,7 +887,7 @@ textarea.input { line-height: 1.45; }
 .fila-time.venceu { font-weight: 800; color: var(--teal); }
 /* os avisos de cada linha ficam um por linha, senao colam no anterior */
 .fila-linha .tiny { display: block; line-height: 1.35; }
-.fila-time b { color: var(--navy); }
+.fila-time b { color: var(--text); }
 .fila-time i { font-style: normal; font-size: 11px; font-weight: 800; color: var(--pink); }
 
 /* nomes das duplas na partida: quebram em vez de serem cortados, senao no
@@ -869,3 +911,19 @@ textarea.input { line-height: 1.45; }
   padding-top: 12px;
   border-top: 1px dashed var(--line);
 }
+
+/* botao de trocar entre o modo diurno e o noturno, no cabecalho */
+.bt-tema {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 246, 238, .28);
+  background: rgba(255, 246, 238, .12);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.bt-tema:active { background: rgba(255, 246, 238, .22); }

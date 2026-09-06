@@ -388,7 +388,30 @@ worker e os caches), cache do SW versionado por build, rodapé com a versão e
   Gravado em `month_closures`; a virada do calendário continua como rede de
   segurança.
 
-## Tema escuro, com as cores do logo
+## Dois temas, e a lição que se repetiu
+
+O app tem **modo diurno e noturno**, no botão ☀️/🌙 do cabeçalho. A escolha fica
+guardada no celular e é aplicada **antes de o React montar** (`aplicarTemaSalvo`
+no `main.tsx`), senão a tela pisca clara antes de escurecer. O padrão é o
+noturno: o play é à noite, na areia.
+
+⚠️ **O mesmo bug apareceu duas vezes, uma em cada direção.** Ao converter para
+escuro, `#fff` que era **texto** virou superfície e o "PLAY" sumiu do cabeçalho.
+Ao criar o tema claro, `var(--navy)` que era **texto escuro** virou
+`var(--fundo)` e os títulos de seção e os números sumiram na página clara.
+
+A causa é a mesma: **um token de cor não diz qual é o papel dele**. A correção
+foi criar dois nomes que não acompanham o tema —
+
+- `--sempre-claro`: texto sobre superfície que é escura nos dois temas
+  (cabeçalho, toast, avatar);
+- `--sempre-escuro`: texto sobre superfície viva nos dois temas (selo rosa,
+  degrau dourado do pódio, fichas de pontuação).
+
+Se um dia surgir um terceiro tema, é por aí. **Nenhum texto deve usar
+`var(--fundo)` como cor** — é sempre o sintoma desse bug.
+
+## As cores
 
 O app nasceu claro (creme com topo azul). Virou **escuro**: fundo azul de noite
 com o pôr do sol do logo (roxo → rosa → laranja) nos acentos. É a paleta da

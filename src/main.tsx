@@ -2,7 +2,11 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { StoreProvider } from './lib/store'
+import { aplicarTemaSalvo } from './lib/tema'
 import './styles.css'
+
+// antes de montar a tela, para nao piscar claro e depois escurecer
+aplicarTemaSalvo()
 
 // service worker: deixa o app instalavel no celular e abrir mesmo sem sinal
 if ('serviceWorker' in navigator && import.meta.env.PROD) {

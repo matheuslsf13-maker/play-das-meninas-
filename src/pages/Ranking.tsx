@@ -437,7 +437,7 @@ export default function Ranking({
         <div className="section-title">⭐ Pontuação individual</div>
         <div className="grid2" style={{ gap: 8 }}>
           {POINTS_TABLE.map((p) => (
-            <div key={p.label} style={{ background: p.color, borderRadius: 12, padding: '8px 10px', color: 'var(--noite)' }}>
+            <div key={p.label} style={{ background: p.color, borderRadius: 12, padding: '8px 10px', color: 'var(--sempre-escuro)' }}>
               <div className="tiny" style={{ fontWeight: 800, letterSpacing: '.5px' }}>VITÓRIA POR {p.label}</div>
               <div style={{ fontSize: 22, fontWeight: 900 }}>{p.points} <span style={{ fontSize: 11 }}>PONTOS</span></div>
             </div>
@@ -461,7 +461,7 @@ export default function Ranking({
                 key={x.title}
                 style={{
                   background: top ? 'var(--por-do-sol)' : 'var(--card-2)',
-                  color: top ? 'var(--noite)' : undefined,
+                  color: top ? 'var(--sempre-escuro)' : undefined,
                   borderRadius: 12,
                   padding: '8px 10px',
                   gridColumn: top ? '1 / -1' : undefined,
