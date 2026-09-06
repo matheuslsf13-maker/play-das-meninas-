@@ -77,6 +77,27 @@ As duplas são montadas pela pontuação acumulada, para os jogos ficarem parelh
   terminar o jogo e já voltar, cansada, enquanto outra esperava sentada. O app
   guarda a hora em que cada partida terminou (`matches.ended_at` mais uma cópia
   no `localStorage`) e ordena a fila de espera por isso.
+- **Empate na espera tem que dar a MESMA posição** (`ordemDeEspera` usa
+  ranking denso). A primeira versão dava posições 0,1,2,3… mesmo quando ninguém
+  tinha jogado ainda — uma preferência inventada que, com peso 1000 no custo,
+  atropelava a ordem da fila e desmontava as rondas logo na primeira troca.
+  Medido no app com 20 jogadoras e 3 quadras: **antes a quadra livre chamava
+  alguém que tinha acabado de sair, com 8 meninas ainda esperando a primeira
+  partida; depois passou a chamar quatro que nunca tinham entrado**.
+
+## A fila mostrada é previsão, não a ordem de geração
+
+A lista "Próximas na fila" mostrava as partidas na ordem em que foram geradas.
+Isso engana: aparecia na frente quem tinha acabado de sair da quadra, enquanto
+meninas que nem tinham entrado ficavam lá embaixo — e contradizia o que as
+quadras iam fazer de verdade.
+
+Hoje a lista passa por `ordemPrevista()`, que roda o mesmo critério das quadras
+(entra quem está fora há mais tempo) e vai empurrando cada partida escolhida
+para o fim da espera. **Só muda a ordem de exibição** — as duplas já estão
+formadas, então o rodízio continua intacto. Cada linha marca com 🆕 quem ainda
+não entrou em quadra nenhuma vez (e quem está jogando agora **não** conta como
+"ainda não jogou", que era um erro da primeira versão do aviso).
 
 ## Precisa sobrar gente para as quadras não pararem
 
@@ -98,11 +119,41 @@ longo demais para uma noite. O modo em grupos resolve: o mesmo rodízio acontece
 
 - Quem escolhe é o **tamanho do grupo**; o app calcula quantos grupos cabem a
   partir de quantas confirmaram, com tamanhos o mais parecidos possível.
-- Os grupos são formados **por nível**: o grupo 1 leva as mais bem pontuadas do
-  histórico, para os jogos ficarem parelhos dentro do grupo.
+- Os grupos são formados **por nível**: o grupo 1 leva quem está indo melhor nos
+  últimos 4 plays, para os jogos ficarem parelhos dentro do grupo.
 - **Os pontos continuam individuais e o ranking do dia é um só** — o grupo muda
   contra quem você joga, não como você pontua.
 - Grupos de 8 fecham perfeitos (28 duplas, 14 partidas, zero repetição).
+
+## Força: os últimos 4 plays, não o histórico inteiro
+
+O balanceamento já não usava o ranking do mês (senão o primeiro play do mês
+sairia desequilibrado), mas usava o **histórico inteiro** — e isso tinha um
+furo: quem foi muito boa há um ano e anda jogando mal continuava caindo no
+grupo forte.
+
+Hoje `ratings()` olha os **últimos 4 plays** (`PLAYS_PARA_FORCA`). Quatro
+porque é o bastante para pegar a forma atual e para **atravessar a virada do
+mês** — resolve os dois problemas de uma vez.
+
+Quem jogou pouco nessa janela **não cai direto na média do grupo**: o app
+completa com o histórico dela, para quem faltou algumas sextas não ser tratada
+como estreante. Só quem nunca jogou recebe a média (2,00).
+
+Medido: numa simulação com 6 plays, a jogadora que venceu os 4 últimos foi para
+o grupo 1 e a que dominou só os 2 primeiros caiu para o grupo 2.
+
+## Play avulso
+
+Nem todo jogo é campeonato — as meninas marcam um play numa segunda qualquer.
+Na criação dá para desmarcar **"vale para o campeonato"** (`sessions.ranked`).
+
+O play avulso **conta** no histórico de cada jogadora, nas estatísticas e na
+força que equilibra as duplas dos próximos plays. Ele **não** soma pontos no
+ranking do mês e **não** mexe nas sequências 🔥 — o status é sobre as sextas.
+
+No Stats, o filtro por mês acompanha o ranking (só os plays que valem) e o
+"Histórico completo" traz tudo; senão os dois números se contradiriam.
 
 ## Status 🔥 (o atrativo do campeonato)
 
@@ -242,9 +293,9 @@ sozinho, 4 conferidos na mão.
       **sistema de sequências**, que é o atrativo do campeonato.
 - [ ] Mensagem pronta para o grupo pedindo que escrevam o nome completo certo na
       lista de confirmação (facilita a importação).
-- [x] ~~Rodar os scripts `04` e `05` no SQL Editor~~ — feito e conferido em
-      05/09/2026: `started_at`, `ended_at`, `format`, `groups` e a tabela
-      `month_closures` estão no banco, com RLS (leitura pública, escrita
+- [x] ~~Rodar os scripts `04`, `05` e `06` no SQL Editor~~ — feito e conferido em
+      05/09/2026: `started_at`, `ended_at`, `format`, `groups`, `ranked` e a
+      tabela `month_closures` estão no banco, com RLS (leitura pública, escrita
       autenticada) e tempo real ligados nas 5 tabelas.
 - [ ] Opcional: tirar o "Mais que um play, uma experiência!" do rodapé das artes
       (já aparece dentro do logo).

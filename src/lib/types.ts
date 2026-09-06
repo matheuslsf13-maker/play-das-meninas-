@@ -37,6 +37,12 @@ export type PlaySession = {
   format?: PlayFormat
   /** No modo em grupos, quem esta em cada grupo (o grupo 1 e o de nivel mais alto). */
   groups?: string[][] | null
+  /**
+   * O play vale para o campeonato? `false` = play avulso: as partidas contam
+   * no historico e no equilibrio das duplas, mas nao somam pontos no ranking
+   * do mes nem mexem nas sequencias. Ausente conta como `true` (plays antigos).
+   */
+  ranked?: boolean
 }
 
 export type Match = {

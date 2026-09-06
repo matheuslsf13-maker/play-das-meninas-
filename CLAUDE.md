@@ -61,11 +61,19 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
 - **O mês fecha na mão**, no botão "🏁 Finalizar o mês" do Ranking (dá para
   reabrir). A premiação acontece na última sexta, antes de o calendário virar.
 - **O ranking zera todo mês, o histórico não.** A força usada para equilibrar as
-  duplas sai de `ratings()`, que lê **todas** as partidas já jogadas com
-  decaimento — por isso o primeiro play do mês já sai equilibrado.
+  duplas e dividir os grupos sai de `ratings()`, que olha os **últimos 4 plays**
+  (`PLAYS_PARA_FORCA` em `src/lib/stats.ts`) — não o ranking do mês nem o
+  histórico inteiro. A janela atravessa a virada do mês, então o primeiro play
+  do mês já sai equilibrado; e quem foi boa há um ano mas anda mal não cai no
+  grupo forte. Quem jogou pouco na janela é completada com o histórico dela.
+- **Play avulso** (`sessions.ranked = false`): conta no histórico e na força,
+  mas **não soma no ranking do mês nem mexe nas sequências**. Serve para o jogo
+  de segunda que não é o campeonato.
 - **Partida iniciada**: quem está em quadra agora é definido pelo botão
   "▶️ Partida iniciada"; lançar o placar encerra. Isso alimenta o aviso de
   quadra parada e a troca de jogadoras.
+- A lista "Próximas na fila" usa `ordemPrevista()`, não a ordem gravada: mostrar
+  a ordem de geração colocava na frente quem tinha acabado de sair da quadra.
 
 ## Convenções
 

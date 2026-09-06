@@ -45,8 +45,8 @@ export const supabaseRepo: Repo = {
     if (!error) return
     // banco ainda sem as colunas do modo em grupos (script 05 nao rodou):
     // salva o resto, que e o que o play precisa para funcionar
-    if (/format|groups/.test(error.message ?? '')) {
-      const { format: _f, groups: _g, ...resto } = s
+    if (/format|groups|ranked/.test(error.message ?? '')) {
+      const { format: _f, groups: _g, ranked: _r, ...resto } = s
       const retry = await client().from('sessions').upsert(resto)
       if (retry.error) throw retry.error
       return

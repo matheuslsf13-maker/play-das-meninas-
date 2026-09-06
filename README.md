@@ -18,7 +18,7 @@ estatísticas individuais, de duplas e de confrontos.
   espera sentada.
 - **Dois formatos** — *Todas com todas* (o rodízio inteiro) ou **em grupos**:
   você escolhe quantas meninas por grupo e o app monta os grupos **por nível**
-  (grupo 1 com as mais bem pontuadas do histórico). Cada grupo é um rodízio
+  (grupo 1 com quem está indo melhor nos últimos 4 plays). Cada grupo é um rodízio
   próprio, mas **os pontos continuam individuais e o ranking do dia é um só**.
   Serve para noite curta: com 16 meninas o rodízio inteiro dá 15 jogos para cada
   uma; em grupos de 8, dá 7.
@@ -35,9 +35,11 @@ estatísticas individuais, de duplas e de confrontos.
   a premiação acontece na última sexta e não na virada do calendário. Dá para
   reabrir se foi engano ou teste.
 - **Histórico completo** — o ranking zera todo mês, mas **nada é apagado**. Dá
-  para ver o acumulado de sempre no Ranking e nas Stats, e é desse histórico que
-  sai a força usada para equilibrar as duplas — por isso o primeiro play do mês
-  já sai balanceado mesmo com a pontuação do mês zerada.
+  para ver o acumulado de sempre no Ranking e nas Stats.
+- **Play avulso** — na criação dá para marcar que o play **não vale para o
+  campeonato** (aquele jogo de segunda). Ele conta no histórico da jogadora e
+  ajuda a equilibrar as duplas dos próximos plays, mas não soma pontos no
+  ranking do mês nem mexe nas sequências 🔥.
 - **Ranking do dia e do mês** — pódio com as fotos do top 3 e classificação
   (pontos, jogos, vitórias, derrotas, saldo de games, aproveitamento). A tela
   mostra o top 10 e expande para a lista inteira quando você quiser.
@@ -78,7 +80,7 @@ salvos apenas no navegador de quem está usando. Ótimo para testar.
 2. No **SQL Editor**, cole e rode o conteúdo de [`supabase/schema.sql`](supabase/schema.sql).
    Isso cria as tabelas, libera a leitura pública, ativa o tempo real e cria o
    bucket `photos` para as fotos de perfil. Depois rode os arquivos numerados
-   da pasta [`supabase/`](supabase) **na ordem** (`02`, `03`, `04`, `05`): são as
+   da pasta [`supabase/`](supabase) **na ordem** (`02` a `06`): são as
    migrações que vieram depois. O app funciona sem elas — guarda o que falta no
    celular de quem organiza — mas aí o modo em grupos, o tempo de descanso e o
    fechamento do mês não chegam aos outros aparelhos.
@@ -240,14 +242,18 @@ depois os plays anteriores. Não dá para "nunca se enfrentar": num grupo de 8 s
 ou seja, na média cada par se cruza duas vezes. O alvo é espalhar, e o resultado
 medido fica entre **1 e 3 confrontos por par, com média exata de 2,00**.
 
-**A força de cada jogadora** = média de pontos por partida no **histórico
-completo**, com os plays mais recentes pesando mais (quem nunca jogou entra na
-média do grupo). É por isso que o primeiro play do mês já sai equilibrado, mesmo
-com o ranking do mês zerado.
+**A força de cada jogadora** = média de pontos por partida nos **últimos 4
+plays**. Não é o ranking do mês (senão o primeiro play do mês sairia
+desequilibrado) nem o histórico inteiro (senão quem foi boa há um ano e anda
+mal continuaria caindo no grupo forte). Quem jogou pouco nesses 4 plays é
+completada com o histórico dela, para quem faltou algumas sextas não ser
+tratada como estreante.
 
 **A ordem da fila** é montada para espalhar o descanso, e durante o play a próxima
 partida de cada quadra é escolhida olhando **todas as quadras livres de uma vez** —
-senão a mesma menina acaba sugerida em duas quadras ao mesmo tempo.
+senão a mesma menina acaba sugerida em duas quadras ao mesmo tempo. A lista
+"Próximas na fila" mostra a **ordem prevista**, não a ordem em que as partidas
+foram geradas, e marca com 🆕 quem ainda não entrou em quadra nenhuma vez.
 
 > Uma quadra só roda sem parar se sobrar gente: quando `quadras × 4` é igual ao
 > número de meninas, ninguém fica de fora e a quadra que terminar primeiro

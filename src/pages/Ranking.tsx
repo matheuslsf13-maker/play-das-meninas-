@@ -7,6 +7,7 @@ import {
   balance,
   computeStats,
   playedMatches,
+  PLAYS_PARA_FORCA,
   rankPlayers,
   winRate,
   type PlayerStat,
@@ -85,7 +86,8 @@ export default function Ranking({
   )
 
   const rows = useMemo(() => {
-    const ms = playedMatches(data, historico ? {} : { month: activeMonth })
+    // no mes entram so os plays do campeonato; no historico entra tudo
+    const ms = playedMatches(data, historico ? {} : { month: activeMonth, ranked: true })
     const awards = historico ? streaks.awards : streaks.awards.filter((a) => a.month === activeMonth)
     return rankPlayers(applyBonuses(computeStats(ms), awards), nameOf)
   }, [data, activeMonth, historico, nameOf, streaks])
@@ -97,7 +99,7 @@ export default function Ranking({
   )
 
   const totals = useMemo(() => {
-    const ms = playedMatches(data, historico ? {} : { month: activeMonth })
+    const ms = playedMatches(data, historico ? {} : { month: activeMonth, ranked: true })
     const days = new Set(ms.map((m) => m.session_id)).size
     return { games: ms.length, days, players: rows.length }
   }, [data, activeMonth, historico, rows.length])
@@ -210,9 +212,10 @@ export default function Ranking({
 
         {historico && (
           <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
-            Soma de <strong>todos os plays já registrados</strong>. O ranking do mês zera a cada
-            virada, mas nada é apagado: é deste histórico que sai a força usada para montar as
-            duplas equilibradas do próximo play.
+            Soma de <strong>todos os plays já registrados</strong>, incluindo os avulsos. O
+            ranking do mês zera a cada virada, mas nada é apagado. Para equilibrar as duplas o
+            app não usa este total nem o mês: usa a forma dos <strong>últimos {PLAYS_PARA_FORCA}
+            plays</strong>, que é o que diz como cada uma está jogando agora.
           </p>
         )}
 

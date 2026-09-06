@@ -10,6 +10,7 @@ import {
   opponentStats,
   partnerStats,
   playedMatches,
+  PLAYS_PARA_FORCA,
   winRate,
   type DuoStat,
   type PairKeyStat,
@@ -34,7 +35,9 @@ export default function Stats() {
   const [playerId, setPlayerId] = useState<string>('')
 
   const matches = useMemo(
-    () => playedMatches(data, period === 'all' ? {} : { month: period }),
+    // o mes acompanha o ranking (so os plays que valem); o historico traz tudo,
+    // inclusive os plays avulsos
+    () => playedMatches(data, period === 'all' ? {} : { month: period, ranked: true }),
     [data, period],
   )
   const streaks = useMemo(() => computeStreaks(data), [data])
@@ -79,8 +82,10 @@ export default function Stats() {
             ))}
           </select>
           <em className="hint">
-            O ranking zera todo mês, mas as partidas ficam guardadas para sempre — é o histórico
-            completo que o app usa para montar as duplas equilibradas.
+            O ranking zera todo mês, mas as partidas ficam guardadas para sempre. Os{' '}
+            <strong>plays avulsos</strong> aparecem só no histórico, porque não valem para o
+            campeonato. As duplas equilibradas saem da forma dos <strong>últimos{' '}
+            {PLAYS_PARA_FORCA} plays</strong>, não deste total.
           </em>
         </label>
       </div>

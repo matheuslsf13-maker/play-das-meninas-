@@ -620,15 +620,20 @@ export function ordemDeEspera(
   jogadoras: string[],
   fimDe: (id: string) => number | null,
 ): Map<string, number> {
-  const ordenadas = [...jogadoras].sort((a, b) => {
-    const fa = fimDe(a)
-    const fb = fimDe(b)
-    if (fa === null && fb === null) return 0
-    if (fa === null) return -1 // ainda nao jogou hoje: entra na frente
-    if (fb === null) return 1
-    return fa - fb
+  // Quem esta na MESMA situacao recebe a MESMA posicao. Dar posicoes
+  // diferentes para quem esta empatado (por exemplo, no comeco do play, quando
+  // ninguem jogou ainda) inventa uma preferencia que nao existe -- e essa
+  // preferencia inventada atropelava a ordem da fila, desmontando as rondas e
+  // deixando quadra parada logo na primeira troca.
+  const distintos = [...new Set(jogadoras.map((id) => fimDe(id)))]
+  distintos.sort((a, b) => {
+    if (a === null && b === null) return 0
+    if (a === null) return -1 // ainda nao jogou hoje: entra na frente
+    if (b === null) return 1
+    return a - b
   })
-  return new Map(ordenadas.map((id, i) => [id, i]))
+  const posicao = new Map<number | null, number>(distintos.map((v, i) => [v, i]))
+  return new Map(jogadoras.map((id) => [id, posicao.get(fimDe(id)) ?? 0]))
 }
 
 export type EscolhaOpts = {
@@ -698,6 +703,59 @@ export function proximasDasQuadras(opts: EscolhaOpts): Map<number, Match> {
 
   const out = new Map<number, Match>()
   melhor.forEach((m, i) => out.set(quadrasLivres[i], m))
+  return out
+}
+
+/**
+ * A ordem em que as partidas que faltam devem acontecer.
+ *
+ * Nao e a ordem em que elas foram geradas: essa e so o ponto de partida, e
+ * mostra-la na tela engana, porque aparece na frente quem acabou de sair da
+ * quadra. Aqui a fila e projetada rodando o mesmo criterio das quadras --
+ * entra sempre a partida com as jogadoras que estao ha mais tempo sem jogar --
+ * e cada partida escolhida joga as suas quatro para o fim da espera.
+ *
+ * So muda a ORDEM: as duplas ja estao formadas, entao o rodizio continua
+ * intacto (ninguem repete parceira por causa disto).
+ */
+export function ordemPrevista(opts: {
+  /** Partidas sem placar e sem inicio. */
+  pendentes: Match[]
+  /** Fila de espera atual (0 = fora ha mais tempo). */
+  espera: Map<string, number>
+  /** Quem esta em quadra ou ja escalada: vai para o fim da espera. */
+  ocupadas: Set<string>
+  /** Todas as jogadoras do play. */
+  jogadoras: string[]
+}): Match[] {
+  const { pendentes, espera, ocupadas, jogadoras } = opts
+  const n = Math.max(1, jogadoras.length)
+
+  // "ha quanto tempo jogou", em passos de fila: menor = esperando ha mais tempo
+  const ultima = new Map<string, number>()
+  for (const id of jogadoras) {
+    const posicao = espera.get(id) ?? 0
+    ultima.set(id, ocupadas.has(id) ? n + posicao : posicao)
+  }
+
+  const restantes = pendentes.slice()
+  const out: Match[] = []
+  while (restantes.length > 0) {
+    let escolhida = 0
+    let melhor = Infinity
+    restantes.forEach((m, i) => {
+      const ids = jogadorasDaPartida(m)
+      const soma = ids.reduce((t, id) => t + (ultima.get(id) ?? 0), 0)
+      const nota = soma * 1000 + m.round // desempate pela ordem em que foi gerada
+      if (nota < melhor) {
+        melhor = nota
+        escolhida = i
+      }
+    })
+    const m = restantes.splice(escolhida, 1)[0]
+    for (const id of jogadorasDaPartida(m)) ultima.set(id, 2 * n + out.length)
+    out.push(m)
+  }
   return out
 }
 

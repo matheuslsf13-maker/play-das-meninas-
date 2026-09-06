@@ -208,6 +208,8 @@ label.field > span {
 }
 .badge.open { background: #fff3d6; color: #96690a; }
 .badge.finished { background: #e3f6ef; color: var(--teal); }
+/* play avulso: acontece, conta no historico, mas nao vale para o campeonato */
+.badge.avulso { background: #ede7fb; color: var(--purple); }
 
 /* ---------- avatar ---------- */
 .avatar {
@@ -810,6 +812,8 @@ textarea.input { line-height: 1.45; }
   overflow-wrap: anywhere;
 }
 .fila-time.venceu { font-weight: 800; color: var(--teal); }
+/* os avisos de cada linha ficam um por linha, senao colam no anterior */
+.fila-linha .tiny { display: block; line-height: 1.35; }
 .fila-time b { color: var(--navy); }
 .fila-time i { font-style: normal; font-size: 11px; font-weight: 800; color: var(--pink); }
 
@@ -823,6 +827,10 @@ textarea.input { line-height: 1.45; }
 .pick-team { gap: 6px; padding: 10px; }
 .pick-team .names { font-size: 14px; }
 .names .ocupada { color: var(--orange); font-weight: 800; }
+
+/* opcao "play avulso" no formulario, em roxo para nao virar mais um cartao rosa */
+.toggle-card.avulso { border-color: var(--purple); background: #f3eefc; }
+.toggle-card.avulso input[type='checkbox'] { accent-color: var(--purple); }
 
 /* finalizar o mes na mao */
 .fechamento {

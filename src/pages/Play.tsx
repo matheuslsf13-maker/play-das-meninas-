@@ -7,6 +7,7 @@ import {
   jogadorasDaPartida,
   liberarPartida,
   ordemDeEspera,
+  ordemPrevista,
   parceirasDoRodizio,
   partidasDoRodizio,
   planToMatches,
@@ -16,7 +17,15 @@ import {
 import { dayRankingText, scheduleText } from '../lib/share'
 import { isPlayed, matchPoints } from '../lib/scoring'
 import { loadFins, loadInicios, saveFins, saveInicios, type Horarios } from '../lib/emQuadra'
-import { buildHistory, computeStats, pairKey, playedMatches, ratings, rankPlayers } from '../lib/stats'
+import {
+  buildHistory,
+  computeStats,
+  pairKey,
+  playedMatches,
+  PLAYS_PARA_FORCA,
+  ratings,
+  rankPlayers,
+} from '../lib/stats'
 import { buildDayPoster } from '../lib/poster'
 import { computeStreaks, streakLevel } from '../lib/streaks'
 import { useWakeLock } from '../lib/wakelock'
@@ -113,6 +122,7 @@ function PlayList({
                     <div className="row" style={{ gap: 8 }}>
                       <strong className="ellipsis">{s.title}</strong>
                       <span className={`badge ${s.status}`}>{s.status === 'open' ? 'em andamento' : 'finalizado'}</span>
+                      {s.ranked === false && <span className="badge avulso">avulso</span>}
                     </div>
                     <div className="tiny muted">
                       {dateLabel(s.date)} · {s.player_ids.length} jogadoras · {s.courts} quadras
@@ -149,6 +159,7 @@ function ConfirmarExclusao({ session, onClose }: { session: PlaySession; onClose
   )
   const perdas = useMemo(() => rankPlayers(computeStats(jogadas), nameOf), [jogadas, nameOf])
   const finalizado = session.status === 'finished'
+  const avulso = session.ranked === false
 
   return (
     <Modal title="Apagar este play?" onClose={onClose}>
@@ -161,7 +172,9 @@ function ConfirmarExclusao({ session, onClose }: { session: PlaySession; onClose
       {perdas.length > 0 && (
         <>
           <p className="tiny muted" style={{ marginBottom: 6 }}>
-            Estes pontos saem do ranking do mês:
+            {avulso
+              ? 'Este play é avulso, então nada sai do ranking do mês — mas estes pontos somem do histórico das jogadoras:'
+              : 'Estes pontos saem do ranking do mês:'}
           </p>
           <div className="stack" style={{ marginBottom: 12 }}>
             {perdas.slice(0, 5).map((s) => (
@@ -177,7 +190,7 @@ function ConfirmarExclusao({ session, onClose }: { session: PlaySession; onClose
         </>
       )}
 
-      {finalizado && (
+      {finalizado && !avulso && (
         <div className="banner warn">
           🔥 Este play já foi finalizado. Apagar também <strong>refaz as sequências</strong>: quem
           subiu ao pódio nesse dia pode perder o status.
@@ -228,6 +241,7 @@ function NewPlay({
   const [courts, setCourts] = useState(preset.courts ?? 3)
   const [format, setFormat] = useState<PlayFormat>(preset.format ?? 'todas')
   const [porGrupo, setPorGrupo] = useState(8)
+  const [ranked, setRanked] = useState(preset.ranked ?? true)
   const [importando, setImportando] = useState(false)
   const [target, setTarget] = useState(preset.target ?? 4)
   const [selected, setSelected] = useState<string[]>(preset.player_ids ?? [])
@@ -288,6 +302,7 @@ function NewPlay({
         created_at: new Date().toISOString(),
         format: emGrupos ? 'grupos' : 'todas',
         groups: emGrupos ? grupos : null,
+        ranked,
       }
       await saveSession(session)
       await saveMatches(planToMatches(session.id, fila))
@@ -346,8 +361,22 @@ function NewPlay({
             <em className="hint">
               {format === 'todas'
                 ? 'cada menina faz dupla com cada uma das outras exatamente uma vez'
-                : 'o mesmo rodízio, mas dentro de cada grupo — os pontos continuam individuais e o ranking do dia é um só'}
+                : 'o mesmo rodízio, mas dentro de cada grupo — os grupos saem por nível, os pontos continuam individuais e o ranking do dia é um só'}
             </em>
+          </div>
+
+          <div className={`toggle-card${ranked ? '' : ' avulso'}`}>
+            <label className="row" style={{ gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" checked={ranked} onChange={(e) => setRanked(e.target.checked)} />
+              <span className="grow">
+                <strong>{ranked ? '🏆 Vale para o campeonato' : '🎈 Play avulso'}</strong>
+                <span className="hint" style={{ marginTop: 2 }}>
+                  {ranked
+                    ? 'os pontos entram no ranking do mês e as sequências 🔥 correm normalmente'
+                    : 'não soma pontos no ranking do mês e não mexe nas sequências 🔥 — mas conta no histórico da jogadora e no equilíbrio das duplas dos próximos plays'}
+                </span>
+              </span>
+            </label>
           </div>
 
           {format === 'grupos' && (
@@ -358,7 +387,7 @@ function NewPlay({
                 <em className="hint">
                   {selected.length < 8
                     ? 'com menos de 8 confirmadas não dá para dividir: vai sair um grupo só'
-                    : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com as mais bem pontuadas do histórico`}
+                    : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com quem está indo melhor nos últimos ${PLAYS_PARA_FORCA} plays`}
                 </em>
               </div>
             </div>
@@ -464,8 +493,10 @@ function NewPlay({
             {restPorVez > 0 ? ` (${restPorVez} esperam a vez, e entra sempre quem está fora há mais tempo)` : ' (todas jogam ao mesmo tempo)'}.
             {effCourts < courts && ' Ajustei o número de quadras para caber todo mundo.'}
             <br />
-            A força de cada uma vem do <strong>histórico completo</strong>, não do ranking do mês —
-            por isso o primeiro play do mês já sai equilibrado mesmo com a pontuação zerada.
+            Para equilibrar as duplas e dividir os grupos, o app usa a forma dos{' '}
+            <strong>últimos {PLAYS_PARA_FORCA} plays</strong> — não o ranking do mês nem o
+            histórico inteiro. Assim quem está indo bem agora é que pega o grupo forte, e a
+            virada do mês não desequilibra nada.
           </div>
         )}
       </div>
@@ -695,6 +726,25 @@ function PlayDetail({
     return session.player_ids.filter((id) => !comprometidas.has(id))
   }, [ocupadas, proximas, session.player_ids])
 
+  /**
+   * A fila de verdade: o que sobra depois das quadras, na ordem em que deve
+   * acontecer. Sem isto a tela mostrava a ordem de geracao, e quem tinha
+   * acabado de jogar aparecia na frente de quem ainda nem tinha entrado.
+   */
+  const filaPrevista = useMemo(() => {
+    const naQuadra = new Set([...proximas.values()].map((m) => m.id))
+    const comprometidas = new Set(ocupadas)
+    for (const m of proximas.values()) {
+      for (const id of jogadorasDaPartida(m)) comprometidas.add(id)
+    }
+    return ordemPrevista({
+      pendentes: pendentes.filter((m) => !naQuadra.has(m.id)),
+      espera,
+      ocupadas: comprometidas,
+      jogadoras: session.player_ids,
+    })
+  }, [pendentes, proximas, ocupadas, espera, session.player_ids])
+
   /** Duplas que aparecem mais de uma vez no dia (sobra do rodizio impar). */
   const duplasRepetidas = useMemo(() => {
     const vistas = new Map<string, string>() // dupla -> id da primeira partida
@@ -876,7 +926,10 @@ function PlayDetail({
       <div className="card">
         <div className="row spread">
           <button className="btn ghost sm" onClick={onBack}>← Plays</button>
-          <span className={`badge ${session.status}`}>{finished ? 'finalizado' : 'em andamento'}</span>
+          <span className="row" style={{ gap: 6 }}>
+            {session.ranked === false && <span className="badge avulso">avulso</span>}
+            <span className={`badge ${session.status}`}>{finished ? 'finalizado' : 'em andamento'}</span>
+          </span>
         </div>
         <div style={{ marginTop: 10 }}>
           <div style={{ fontSize: 19, fontWeight: 800 }}>{session.title}</div>
@@ -908,6 +961,14 @@ function PlayDetail({
           )}
         </div>
       </div>
+
+      {session.ranked === false && (
+        <div className="banner info">
+          🎈 <strong>Play avulso.</strong> Os pontos deste dia <strong>não entram no ranking
+          do mês</strong> e não mexem nas sequências 🔥 — mas ficam no histórico de cada
+          jogadora e continuam ajudando a equilibrar as duplas dos próximos plays.
+        </div>
+      )}
 
       {grupos && grupos.length > 1 && (
         <div className="card">
@@ -980,7 +1041,10 @@ function PlayDetail({
       <ListaDePartidas
         titulo="⏭️ Próximas na fila"
         vazio="Nada na fila."
-        partidas={pendentes.filter((m) => ![...proximas.values()].some((p) => p.id === m.id))}
+        rodape="A ordem segue quem está fora há mais tempo, igual às quadras — não é a ordem em que as partidas foram geradas. As duplas não mudam."
+        partidas={filaPrevista}
+        numerar
+        jogos={jogos}
         grupoDe={grupoDe}
         totalGrupos={grupos?.length ?? 1}
         repetidas={duplasRepetidas}
@@ -1016,6 +1080,7 @@ function PlayDetail({
               target: session.target,
               player_ids: session.player_ids,
               format: session.format,
+              ranked: session.ranked,
             })
           }
         >
@@ -1349,7 +1414,10 @@ function MatchCard({
 function ListaDePartidas({
   titulo,
   vazio,
+  rodape,
   partidas,
+  numerar,
+  jogos,
   grupoDe,
   totalGrupos,
   repetidas,
@@ -1360,7 +1428,13 @@ function ListaDePartidas({
 }: {
   titulo: string
   vazio: string
+  /** Explicacao curta embaixo da lista. */
+  rodape?: string
   partidas: Match[]
+  /** Numera pela posicao na lista (a ordem prevista), nao pelo campo do banco. */
+  numerar?: boolean
+  /** Quantas partidas cada jogadora ja fez hoje. */
+  jogos?: Map<string, number>
   grupoDe: Map<string, number>
   totalGrupos: number
   repetidas: Set<string>
@@ -1388,14 +1462,22 @@ function ListaDePartidas({
         <Empty>{vazio}</Empty>
       ) : (
         <div className="stack" style={{ marginTop: 10 }}>
-          {visiveis.map((m) => {
+          {visiveis.map((m, i) => {
             const jogada = isPlayed(m)
             const [pa, pb] = jogada ? matchPoints(m.score_a as number, m.score_b as number) : [0, 0]
             const aWin = jogada && (m.score_a as number) > (m.score_b as number)
+            // Quem ainda nao entrou em quadra nenhuma vez E esta esperando: e
+            // por ela que o organizador procura. Quem esta jogando agora nao
+            // conta como "ainda nao jogou", mesmo sem placar lancado.
+            const novatas = jogos
+              ? jogadorasDaPartida(m).filter(
+                  (id) => (jogos.get(id) ?? 0) === 0 && !emQuadra.has(id),
+                )
+              : []
             return (
               <div key={m.id} className="fila-linha">
                 <span className="fila-num">
-                  {m.round}
+                  {numerar ? `${i + 1}ª` : m.round}
                   <GrupoTag grupo={grupoDe.get(m.team_a[0])} total={totalGrupos} />
                 </span>
                 <span className="grow" style={{ minWidth: 0 }}>
@@ -1412,6 +1494,13 @@ function ListaDePartidas({
                   {repetidas.has(m.id) && (
                     <span className="tiny muted">🔁 dupla repetida (sobra do rodízio)</span>
                   )}
+                  {novatas.length > 0 && (
+                    <span className="tiny" style={{ color: 'var(--teal)', fontWeight: 700 }}>
+                      🆕 {novatas.length === 4
+                        ? 'as quatro ainda estão esperando a primeira partida'
+                        : `${novatas.map(nameOf).join(', ')} ainda não ${novatas.length === 1 ? 'entrou' : 'entraram'} em quadra`}
+                    </span>
+                  )}
                   {!jogada && jogadorasDaPartida(m).some((id) => emQuadra.has(id)) && (
                     <span className="tiny muted">⏳ tem gente desta partida em quadra agora</span>
                   )}
@@ -1427,6 +1516,9 @@ function ListaDePartidas({
             )
           })}
         </div>
+      )}
+      {rodape && partidas.length > 0 && (
+        <p className="tiny muted" style={{ marginBottom: 0 }}>{rodape}</p>
       )}
     </div>
   )

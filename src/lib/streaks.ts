@@ -115,7 +115,8 @@ function acaoDe(c: StreakChoice | undefined): 'usar' | 'preservar' | null {
 export function computeStreaks(data: AppData): Streaks {
   const escolhas = new Map(data.choices.map((c) => [`${c.player_id}:${c.month}`, c]))
   const finished = data.sessions
-    .filter((s) => s.status === 'finished')
+    // play avulso nao mexe em sequencia: o status e sobre as sextas
+    .filter((s) => s.status === 'finished' && s.ranked !== false)
     .sort((a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at))
 
   const current = new Map<string, number>()

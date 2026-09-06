@@ -40,7 +40,15 @@ export function avgPoints(s: PlayerStat): number {
 }
 
 /** Partidas ja jogadas (com placar valido), opcionalmente filtradas por mes. */
-export function playedMatches(data: AppData, opts: { month?: string; sessionId?: string } = {}): Match[] {
+export function playedMatches(
+  data: AppData,
+  opts: {
+    month?: string
+    sessionId?: string
+    /** So os plays que valem para o campeonato (deixa de fora os avulsos). */
+    ranked?: boolean
+  } = {},
+): Match[] {
   const byId = new Map(data.sessions.map((s) => [s.id, s]))
   return data.matches.filter((m) => {
     if (!isPlayed(m)) return false
@@ -48,6 +56,8 @@ export function playedMatches(data: AppData, opts: { month?: string; sessionId?:
     const s = byId.get(m.session_id)
     if (!s) return false
     if (opts.month && monthOf(s.date) !== opts.month) return false
+    // plays antigos nao tem o campo: contam como valendo
+    if (opts.ranked && s.ranked === false) return false
     return true
   })
 }
@@ -193,19 +203,40 @@ export function opponentStats(matches: Match[]): Map<string, Map<string, PairKey
 }
 
 /**
- * Forca estimada de cada jogadora (media de pontos por partida), usada para
- * montar duplas equilibradas. Historico recente pesa mais.
+ * Quantos plays entram na conta da forca de cada jogadora.
+ *
+ * Nao e o historico inteiro de proposito: quem foi muito bem ha um ano e
+ * andou jogando mal cairia no grupo forte sem estar em forma. Quatro plays
+ * pegam o momento atual e atravessam a virada do mes -- entao o primeiro play
+ * do mes ja sai equilibrado mesmo com o ranking zerado.
  */
-export function ratings(data: AppData, upToDate?: string): Map<string, number> {
-  const played = playedMatches(data)
+export const PLAYS_PARA_FORCA = 4
+
+const FORCA_PADRAO = 2
+
+/** Soma de pontos e peso de cada jogadora, dentro de uma janela de plays. */
+function mediaPorPartida(
+  data: AppData,
+  upToDate: string | undefined,
+  maxPlays: number,
+): Map<string, { w: number; p: number }> {
   const byId = new Map(data.sessions.map((s) => [s.id, s]))
+  // as datas de play que contam: as `maxPlays` mais recentes ate a data pedida
+  const datas = [...new Set(
+    data.sessions
+      .filter((s) => !upToDate || s.date <= upToDate)
+      .map((s) => s.date),
+  )]
+    .sort()
+    .reverse()
+    .slice(0, maxPlays)
+  const janela = new Set(datas)
+
   const acc = new Map<string, { w: number; p: number }>()
-  const DEFAULT = 2
-  for (const m of played) {
+  for (const m of playedMatches(data)) {
     const s = byId.get(m.session_id) as PlaySession | undefined
-    if (!s) continue
-    if (upToDate && s.date > upToDate) continue
-    // decaimento: cada dia de play anterior pesa menos
+    if (!s || !janela.has(s.date)) continue
+    // decaimento: dentro da janela, o play mais recente ainda pesa um pouco mais
     const ageDays = upToDate ? daysBetween(s.date, upToDate) : 0
     const w = Math.pow(0.97, ageDays)
     const a = m.score_a as number
@@ -214,17 +245,33 @@ export function ratings(data: AppData, upToDate?: string): Map<string, number> {
     for (const id of m.team_a) add(acc, id, w, pa * w)
     for (const id of m.team_b) add(acc, id, w, pb * w)
   }
+  return acc
+}
+
+/**
+ * Forca estimada de cada jogadora (media de pontos por partida), usada para
+ * montar duplas equilibradas e para dividir os grupos por nivel.
+ *
+ * Vale a forma dos ultimos `PLAYS_PARA_FORCA` plays. Quem jogou pouco nessa
+ * janela nao cai direto na media do grupo: o app completa com o historico
+ * dela, para quem faltou algumas sextas nao ser tratada como estreante.
+ */
+export function ratings(data: AppData, upToDate?: string): Map<string, number> {
+  const recente = mediaPorPartida(data, upToDate, PLAYS_PARA_FORCA)
+  const sempre = mediaPorPartida(data, upToDate, Number.MAX_SAFE_INTEGER)
+
   const out = new Map<string, number>()
   for (const p of data.players) {
-    const e = acc.get(p.id)
-    if (!e || e.w < 1) {
-      // poucas partidas: puxa para a media
-      const known = e ? e.p / Math.max(e.w, 0.0001) : DEFAULT
-      const conf = e ? Math.min(e.w, 1) : 0
-      out.set(p.id, known * conf + DEFAULT * (1 - conf))
-    } else {
-      out.set(p.id, e.p / e.w)
-    }
+    const r = recente.get(p.id)
+    const g = sempre.get(p.id)
+    // confianca cresce com quantas partidas ela tem no periodo
+    const confR = r ? Math.min(r.w, 1) : 0
+    const confG = g ? Math.min(g.w, 1) : 0
+    const mediaR = r && r.w > 0 ? r.p / r.w : FORCA_PADRAO
+    const mediaG = g && g.w > 0 ? g.p / g.w : FORCA_PADRAO
+    // sem dados recentes, cai no historico dela; sem historico, na media geral
+    const base = mediaG * confG + FORCA_PADRAO * (1 - confG)
+    out.set(p.id, mediaR * confR + base * (1 - confR))
   }
   return out
 }
