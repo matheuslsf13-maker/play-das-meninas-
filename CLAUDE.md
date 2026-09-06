@@ -60,12 +60,12 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
   escolhe **usar** (vira pontos, zera) ou **preservar** (segue e ganha 1 vida).
 - **O mês fecha na mão**, no botão "🏁 Finalizar o mês" do Ranking (dá para
   reabrir). A premiação acontece na última sexta, antes de o calendário virar.
-- **O ranking zera todo mês, o histórico não.** A força usada para equilibrar as
-  duplas e dividir os grupos sai de `ratings()`, que olha os **últimos 4 plays**
-  (`PLAYS_PARA_FORCA` em `src/lib/stats.ts`) — não o ranking do mês nem o
-  histórico inteiro. A janela atravessa a virada do mês, então o primeiro play
-  do mês já sai equilibrado; e quem foi boa há um ano mas anda mal não cai no
-  grupo forte. Quem jogou pouco na janela é completada com o histórico dela.
+- **O ranking zera todo mês, o histórico não.** A força que equilibra as duplas e
+  divide os grupos sai de `ratings()`, que é um **Elo**: cada partida move a nota
+  conforme quem estava do outro lado, então **vencer quem está melhor rende muito
+  mais** do que vencer quem está pior. Não é o ranking do mês (senão o primeiro
+  play do mês sairia desequilibrado) e não é média de pontos, que não sabe de quem
+  você ganhou — e por isso quebrava no modo em grupos.
 - **Play avulso** (`sessions.ranked = false`): conta no histórico e na força,
   mas **não soma no ranking do mês nem mexe nas sequências**. Serve para o jogo
   de segunda que não é o campeonato.

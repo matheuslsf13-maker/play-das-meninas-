@@ -203,90 +203,83 @@ export function opponentStats(matches: Match[]): Map<string, Map<string, PairKey
 }
 
 /**
- * Quantos plays entram na conta da forca de cada jogadora.
+ * FORCA DE CADA JOGADORA
  *
- * Nao e o historico inteiro de proposito: quem foi muito bem ha um ano e
- * andou jogando mal cairia no grupo forte sem estar em forma. Quatro plays
- * pegam o momento atual e atravessam a virada do mes -- entao o primeiro play
- * do mes ja sai equilibrado mesmo com o ranking zerado.
- */
-export const PLAYS_PARA_FORCA = 4
-
-const FORCA_PADRAO = 2
-
-/** Soma de pontos e peso de cada jogadora, dentro de uma janela de plays. */
-function mediaPorPartida(
-  data: AppData,
-  upToDate: string | undefined,
-  maxPlays: number,
-): Map<string, { w: number; p: number }> {
-  const byId = new Map(data.sessions.map((s) => [s.id, s]))
-  // as datas de play que contam: as `maxPlays` mais recentes ate a data pedida
-  const datas = [...new Set(
-    data.sessions
-      .filter((s) => !upToDate || s.date <= upToDate)
-      .map((s) => s.date),
-  )]
-    .sort()
-    .reverse()
-    .slice(0, maxPlays)
-  const janela = new Set(datas)
-
-  const acc = new Map<string, { w: number; p: number }>()
-  for (const m of playedMatches(data)) {
-    const s = byId.get(m.session_id) as PlaySession | undefined
-    if (!s || !janela.has(s.date)) continue
-    // decaimento: dentro da janela, o play mais recente ainda pesa um pouco mais
-    const ageDays = upToDate ? daysBetween(s.date, upToDate) : 0
-    const w = Math.pow(0.97, ageDays)
-    const a = m.score_a as number
-    const b = m.score_b as number
-    const [pa, pb] = matchPoints(a, b)
-    for (const id of m.team_a) add(acc, id, w, pa * w)
-    for (const id of m.team_b) add(acc, id, w, pb * w)
-  }
-  return acc
-}
-
-/**
- * Forca estimada de cada jogadora (media de pontos por partida), usada para
- * montar duplas equilibradas e para dividir os grupos por nivel.
+ * Usada para dois trabalhos: equilibrar as duplas de cada partida e dividir os
+ * grupos por nivel. E um Elo -- cada partida move a nota das quatro conforme a
+ * nota de quem estava do outro lado. **Vencer quem esta melhor rende muito;
+ * vencer quem esta pior rende pouco, e perder para quem esta pior custa caro.**
  *
- * Vale a forma dos ultimos `PLAYS_PARA_FORCA` plays. Quem jogou pouco nessa
- * janela nao cai direto na media do grupo: o app completa com o historico
- * dela, para quem faltou algumas sextas nao ser tratada como estreante.
+ * O jeito antigo era a media de pontos por partida, e ela nao sabe DE QUEM
+ * voce ganhou. No modo em grupos isso quebra: cada grupo e um rodizio fechado,
+ * entao dominar o grupo fraco rende a mesma media que dominar o grupo forte --
+ * as notas dos dois grupos deixam de ser comparaveis e a divisao dos grupos
+ * passa a errar cada vez mais. Medido em 12 sextas simuladas (ver DECISOES.md),
+ * correlacao com a habilidade real no modo em grupos:
+ *
+ *   media de pontos   0,56 -> 0,77 -> 0,73 -> 0,70   (piora com o tempo)
+ *   Elo               0,61 -> 0,81 -> 0,89 -> 0,92   (melhora)
+ *
+ * O Elo tambem resolve sozinho o que a janela de "ultimos 4 plays" resolvia:
+ * quem foi boa ha um ano e anda perdendo vai devolvendo nota partida a partida.
+ * E quem falta simplesmente fica com a nota parada, que e o certo -- sem jogo,
+ * sem informacao nova.
  */
+
+/** Todo mundo comeca na media; o valor em si nao importa, so as diferencas. */
+const ELO_INICIAL = 1500
+/** Quanto uma partida move a nota. Entre 12 e 60 o resultado quase nao muda. */
+const ELO_K = 24
+/** Quantos pontos de Elo valem 1 ponto na escala 0-4 que o resto do app usa. */
+const ELO_ESCALA = 110
+
+/** Nota de quem ainda nao jogou: a media do grupo. */
+export const FORCA_PADRAO = 2
+
 export function ratings(data: AppData, upToDate?: string): Map<string, number> {
-  const recente = mediaPorPartida(data, upToDate, PLAYS_PARA_FORCA)
-  const sempre = mediaPorPartida(data, upToDate, Number.MAX_SAFE_INTEGER)
+  const sessao = new Map(data.sessions.map((s) => [s.id, s]))
 
+  // o Elo depende da ordem: cada partida e avaliada com as notas que existiam
+  // naquele momento, entao as partidas entram em ordem cronologica
+  const jogos = playedMatches(data)
+    .filter((m) => {
+      const s = sessao.get(m.session_id)
+      return Boolean(s) && (!upToDate || (s as PlaySession).date <= upToDate)
+    })
+    .sort((x, y) => {
+      const sx = sessao.get(x.session_id) as PlaySession
+      const sy = sessao.get(y.session_id) as PlaySession
+      return (
+        sx.date.localeCompare(sy.date) ||
+        sx.created_at.localeCompare(sy.created_at) ||
+        x.round - y.round
+      )
+    })
+
+  const elo = new Map<string, number>()
+  const nota = (id: string) => elo.get(id) ?? ELO_INICIAL
+
+  for (const m of jogos) {
+    const ga = m.score_a as number
+    const gb = m.score_b as number
+    if (ga + gb === 0) continue
+    const forcaA = (nota(m.team_a[0]) + nota(m.team_a[1])) / 2
+    const forcaB = (nota(m.team_b[0]) + nota(m.team_b[1])) / 2
+    const esperado = 1 / (1 + Math.pow(10, (forcaB - forcaA) / 400))
+    // a margem conta, como na pontuacao do campeonato: 4x0 vale 1,00 e 4x3, 0,57
+    const real = ga / (ga + gb)
+    const delta = ELO_K * (real - esperado)
+    for (const id of m.team_a) elo.set(id, nota(id) + delta)
+    for (const id of m.team_b) elo.set(id, nota(id) - delta)
+  }
+
+  // devolve na escala 0-4 (a mesma da media de pontos), para os pesos do
+  // emparelhamento em pairing.ts continuarem valendo
   const out = new Map<string, number>()
   for (const p of data.players) {
-    const r = recente.get(p.id)
-    const g = sempre.get(p.id)
-    // confianca cresce com quantas partidas ela tem no periodo
-    const confR = r ? Math.min(r.w, 1) : 0
-    const confG = g ? Math.min(g.w, 1) : 0
-    const mediaR = r && r.w > 0 ? r.p / r.w : FORCA_PADRAO
-    const mediaG = g && g.w > 0 ? g.p / g.w : FORCA_PADRAO
-    // sem dados recentes, cai no historico dela; sem historico, na media geral
-    const base = mediaG * confG + FORCA_PADRAO * (1 - confG)
-    out.set(p.id, mediaR * confR + base * (1 - confR))
+    out.set(p.id, Math.max(0, FORCA_PADRAO + (nota(p.id) - ELO_INICIAL) / ELO_ESCALA))
   }
   return out
-}
-
-function add(acc: Map<string, { w: number; p: number }>, id: string, w: number, p: number) {
-  const e = acc.get(id) ?? { w: 0, p: 0 }
-  e.w += w; e.p += p
-  acc.set(id, e)
-}
-
-function daysBetween(from: string, to: string): number {
-  const a = Date.parse(from + 'T00:00:00')
-  const b = Date.parse(to + 'T00:00:00')
-  if (Number.isNaN(a) || Number.isNaN(b)) return 0
-  return Math.max(0, Math.round((b - a) / 86400000))
 }
 
 /** Historico de parcerias/confrontos, para evitar repetir duplas. */

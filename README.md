@@ -18,7 +18,7 @@ estatísticas individuais, de duplas e de confrontos.
   espera sentada.
 - **Dois formatos** — *Todas com todas* (o rodízio inteiro) ou **em grupos**:
   você escolhe quantas meninas por grupo e o app monta os grupos **por nível**
-  (grupo 1 com quem está indo melhor nos últimos 4 plays). Cada grupo é um rodízio
+  (grupo 1 com quem está jogando melhor). Cada grupo é um rodízio
   próprio, mas **os pontos continuam individuais e o ranking do dia é um só**.
   Serve para noite curta: com 16 meninas o rodízio inteiro dá 15 jogos para cada
   uma; em grupos de 8, dá 7.
@@ -242,12 +242,13 @@ depois os plays anteriores. Não dá para "nunca se enfrentar": num grupo de 8 s
 ou seja, na média cada par se cruza duas vezes. O alvo é espalhar, e o resultado
 medido fica entre **1 e 3 confrontos por par, com média exata de 2,00**.
 
-**A força de cada jogadora** = média de pontos por partida nos **últimos 4
-plays**. Não é o ranking do mês (senão o primeiro play do mês sairia
-desequilibrado) nem o histórico inteiro (senão quem foi boa há um ano e anda
-mal continuaria caindo no grupo forte). Quem jogou pouco nesses 4 plays é
-completada com o histórico dela, para quem faltou algumas sextas não ser
-tratada como estreante.
+**A força de cada jogadora** é um **Elo**: cada partida move a nota das quatro
+conforme a nota de quem estava do outro lado, então **vencer quem está jogando
+melhor rende muito mais** do que vencer quem está jogando pior — e perder para
+quem está pior custa caro. Não é o ranking do mês (senão o primeiro play do mês
+sairia desequilibrado) nem média de pontos, que não sabe de quem você ganhou e
+por isso quebrava no modo em grupos, onde dominar o grupo fraco rendia a mesma
+média que dominar o forte.
 
 **A ordem da fila** é montada para espalhar o descanso, e durante o play a próxima
 partida de cada quadra é escolhida olhando **todas as quadras livres de uma vez** —

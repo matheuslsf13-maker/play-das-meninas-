@@ -7,7 +7,6 @@ import {
   balance,
   computeStats,
   playedMatches,
-  PLAYS_PARA_FORCA,
   rankPlayers,
   winRate,
   type PlayerStat,
@@ -214,9 +213,9 @@ export default function Ranking({
           <p className="tiny muted" style={{ marginTop: 8, marginBottom: 0 }}>
             Soma de <strong>todos os plays já registrados</strong>, incluindo os avulsos. O
             ranking do mês zera a cada virada, mas nada é apagado. Para equilibrar as duplas o
-            app não usa este total nem o mês: usa a forma dos{' '}
-            <strong>últimos {PLAYS_PARA_FORCA} plays</strong>, que é o que diz como cada uma
-            está jogando agora.
+            app não usa este total nem o mês: usa uma nota própria, em que{' '}
+            <strong>vencer quem está jogando melhor vale mais</strong>, e que se atualiza a
+            cada partida.
           </p>
         )}
 

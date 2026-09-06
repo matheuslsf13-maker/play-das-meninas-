@@ -22,7 +22,6 @@ import {
   computeStats,
   pairKey,
   playedMatches,
-  PLAYS_PARA_FORCA,
   ratings,
   rankPlayers,
 } from '../lib/stats'
@@ -387,7 +386,7 @@ function NewPlay({
                 <em className="hint">
                   {selected.length < 8
                     ? 'com menos de 8 confirmadas não dá para dividir: vai sair um grupo só'
-                    : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com quem está indo melhor nos últimos ${PLAYS_PARA_FORCA} plays`}
+                    : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com quem está jogando melhor`}
                 </em>
               </div>
             </div>
@@ -493,10 +492,10 @@ function NewPlay({
             {restPorVez > 0 ? ` (${restPorVez} esperam a vez, e entra sempre quem está fora há mais tempo)` : ' (todas jogam ao mesmo tempo)'}.
             {effCourts < courts && ' Ajustei o número de quadras para caber todo mundo.'}
             <br />
-            Para equilibrar as duplas e dividir os grupos, o app usa a forma dos{' '}
-            <strong>últimos {PLAYS_PARA_FORCA} plays</strong> — não o ranking do mês nem o
-            histórico inteiro. Assim quem está indo bem agora é que pega o grupo forte, e a
-            virada do mês não desequilibra nada.
+            Para equilibrar as duplas e dividir os grupos, o app não usa o ranking do mês:
+            usa uma nota própria em que <strong>vencer quem está jogando melhor vale mais</strong>{' '}
+            do que vencer quem está jogando pior. Ela se atualiza a cada partida, então quem
+            está em alta sobe de grupo sozinha — e a virada do mês não desequilibra nada.
           </div>
         )}
       </div>

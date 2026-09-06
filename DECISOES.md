@@ -124,29 +124,62 @@ longo demais para uma noite. O modo em grupos resolve: o mesmo rodízio acontece
 
 - Quem escolhe é o **tamanho do grupo**; o app calcula quantos grupos cabem a
   partir de quantas confirmaram, com tamanhos o mais parecidos possível.
-- Os grupos são formados **por nível**: o grupo 1 leva quem está indo melhor nos
-  últimos 4 plays, para os jogos ficarem parelhos dentro do grupo.
+- Os grupos são formados **por nível**: o grupo 1 leva quem está jogando melhor,
+  para os jogos ficarem parelhos dentro do grupo.
 - **Os pontos continuam individuais e o ranking do dia é um só** — o grupo muda
   contra quem você joga, não como você pontua.
 - Grupos de 8 fecham perfeitos (28 duplas, 14 partidas, zero repetição).
 
-## Força: os últimos 4 plays, não o histórico inteiro
+## Força: um Elo, porque importa **de quem** você ganhou
 
-O balanceamento já não usava o ranking do mês (senão o primeiro play do mês
-sairia desequilibrado), mas usava o **histórico inteiro** — e isso tinha um
-furo: quem foi muito boa há um ano e anda jogando mal continuava caindo no
-grupo forte.
+A força de cada jogadora alimenta duas coisas: o equilíbrio das duplas e a
+divisão dos grupos por nível. Ela já passou por três versões.
 
-Hoje `ratings()` olha os **últimos 4 plays** (`PLAYS_PARA_FORCA`). Quatro
-porque é o bastante para pegar a forma atual e para **atravessar a virada do
-mês** — resolve os dois problemas de uma vez.
+**1. Ranking do mês** — descartado: o primeiro play do mês sairia com todo mundo
+zerado e sem equilíbrio nenhum.
 
-Quem jogou pouco nessa janela **não cai direto na média do grupo**: o app
-completa com o histórico dela, para quem faltou algumas sextas não ser tratada
-como estreante. Só quem nunca jogou recebe a média (2,00).
+**2. Média de pontos por partida** — melhor, mas com um furo que o dono do
+projeto apontou: **ela não sabe de quem você ganhou**. Ganhar de quem está mal
+vale o mesmo que ganhar de quem está muito bem.
 
-Medido: numa simulação com 6 plays, a jogadora que venceu os 4 últimos foi para
-o grupo 1 e a que dominou só os 2 primeiros caiu para o grupo 2.
+No modo em grupos isso não é detalhe, é quebra. Cada grupo é um rodízio fechado,
+então **dominar o grupo 2 rende a mesma média que dominar o grupo 1** — as notas
+dos dois grupos deixam de ser comparáveis, a divisão do próximo play erra, e o
+erro se realimenta semana após semana.
+
+**3. Elo (o atual).** Cada partida move a nota das quatro jogadoras conforme a
+nota de quem estava do outro lado. Vencer quem está melhor rende muito; vencer
+quem está pior rende pouco; perder para quem está pior custa caro. A margem
+conta, como na pontuação do campeonato (4x0 vale 1,00 e 4x3 vale 0,57).
+
+Medido em 12 sextas simuladas, 16 jogadoras, 30 temporadas — correlação entre a
+nota e a habilidade real (1,00 = perfeita):
+
+| | sexta 2 | sexta 4 | sexta 8 | sexta 12 |
+|---|---|---|---|---|
+| **todas com todas** — média de pontos | 0,85 | 0,91 | 0,90 | 0,91 |
+| **todas com todas** — Elo | 0,88 | 0,93 | 0,95 | **0,96** |
+| **em grupos** — média de pontos | 0,56 | 0,77 | 0,73 | **0,70** ⚠️ |
+| **em grupos** — Elo | 0,60 | 0,84 | 0,90 | **0,92** |
+
+Repare na linha de baixo da média de pontos: ela **piora com o tempo** no modo
+em grupos (0,77 → 0,70), exatamente pelo efeito descrito acima. O Elo melhora.
+
+Parâmetros em `src/lib/stats.ts`: `ELO_K = 24` (quanto uma partida move a nota)
+e `ELO_ESCALA = 110` (quantos pontos de Elo valem 1 ponto na escala 0–4 que o
+`pairing.ts` usa). **K não é sensível**: entre 12 e 60 a correlação final fica
+entre 0,90 e 0,93, então o ganho é do método e não de ajuste fino.
+
+O Elo também resolve sozinho o que a janela de "últimos 4 plays" resolvia — quem
+foi boa há um ano e anda perdendo devolve nota partida a partida — sem o corte
+seco, que jogava fora informação boa. E quem falta fica com a **nota parada**,
+que é o certo: sem jogo, sem informação nova.
+
+> **Estreante.** Começa na média do grupo (nota 2,00), não no fim da fila. Com
+> grupos por nível isso a coloca no meio da tabela, não no grupo dos iniciantes.
+> Se ela for muito melhor que isso, o Elo a puxa para cima já no primeiro play.
+> Se preferirem que estreante comece por baixo e suba, é mudar `ELO_INICIAL`
+> para ela — mas aí uma jogadora forte passa algumas sextas em jogos fáceis.
 
 ## Play avulso
 

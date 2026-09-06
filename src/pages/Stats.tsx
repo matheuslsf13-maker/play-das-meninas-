@@ -10,7 +10,6 @@ import {
   opponentStats,
   partnerStats,
   playedMatches,
-  PLAYS_PARA_FORCA,
   winRate,
   type DuoStat,
   type PairKeyStat,
@@ -84,8 +83,8 @@ export default function Stats() {
           <em className="hint">
             O ranking zera todo mês, mas as partidas ficam guardadas para sempre. Os{' '}
             <strong>plays avulsos</strong> aparecem só no histórico, porque não valem para o
-            campeonato. As duplas equilibradas saem da forma dos <strong>últimos{' '}
-            {PLAYS_PARA_FORCA} plays</strong>, não deste total.
+            campeonato. As duplas equilibradas não saem deste total: saem de uma nota
+            própria, em que <strong>vencer quem está jogando melhor vale mais</strong>.
           </em>
         </label>
       </div>
