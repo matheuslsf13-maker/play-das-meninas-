@@ -403,11 +403,16 @@ function NewPlay({
                     : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com quem está jogando melhor`}
                 </em>
                 {selected.length >= 8 && (
-                  <em className="hint" style={{ marginTop: 4 }}>
-                    🔥 Cada grupo tem o seu pódio, e quem sobe segura a sequência:{' '}
-                    <strong>{descreverPodios(tamanhos)}</strong>. Grupos menores deixam o status
-                    fácil demais.
-                  </em>
+                  <>
+                    <em className="hint" style={{ marginTop: 4 }}>
+                      🔥 Cada grupo tem o seu pódio, e quem sobe segura a sequência:{' '}
+                      <strong>{descreverPodios(tamanhos)}</strong>. Grupos menores deixam o status
+                      fácil demais.
+                    </em>
+                    <em className="hint" style={{ marginTop: 4 }}>
+                      🪑 {descreverFolga(tamanhos)}
+                    </em>
+                  </>
                 )}
               </div>
             </div>
@@ -476,12 +481,43 @@ function NewPlay({
 
           {selected.length >= 4 && effCourts === courts && restPorVez === 0 && (
             <div className="banner warn" style={{ margin: '10px 0 0' }}>
-              🪑 Com <strong>{selected.length} jogadoras em {effCourts} quadras</strong> todas jogam
-              ao mesmo tempo e <strong>ninguém fica de fora</strong>. Só que as quadras nunca
-              terminam juntas: a que acabar primeiro vai esperar as outras, porque as quatro meninas
-              da próxima partida ainda estão jogando. Com pelo menos <strong>4 de folga</strong>{' '}
-              ({effCourts * 4 + 4} jogadoras para {effCourts} quadras) o rodízio anda sozinho e todo
-              mundo descansa entre um jogo e outro.
+              🪑 Com <strong>{selected.length} jogadoras em {effCourts} quadra(s)</strong> todas
+              jogam ao mesmo tempo e <strong>ninguém fica de fora</strong> — nem para descansar.
+              <br />
+              {/* o motivo muda conforme o grupo alimenta uma quadra ou varias:
+                  com grupos de 4 cada grupo fica na sua quadra e nao espera
+                  ninguem, so nao para de jogar */}
+              {grupos.length > 1 && tamanhos.every((t) => t === 4) ? (
+                <>
+                  Num grupo de 4 <strong>não existe revezamento</strong>: são sempre as mesmas quatro
+                  meninas, jogando as 3 partidas do grupo uma atrás da outra. Cada grupo fica na sua
+                  quadra, então ninguém espera — mas ninguém respira também.
+                </>
+              ) : effCourts === 1 ? (
+                <>
+                  São sempre as mesmas quatro, jogando uma partida atrás da outra até o rodízio
+                  acabar.
+                </>
+              ) : (
+                <>
+                  E as quadras nunca terminam juntas: a que acabar primeiro vai esperar, porque as
+                  quatro meninas da próxima partida ainda estão jogando.
+                </>
+              )}
+              <br />
+              {grupos.length > 1 ? (
+                <>
+                  <strong>Grupos de 5, 9 ou 13</strong> são os melhores dos dois mundos: todas jogam
+                  o mesmo tanto, nenhuma dupla repete, e sempre sobra alguém para entrar no lugar de
+                  quem acabou de sair. Usar uma quadra a menos também resolve.
+                </>
+              ) : (
+                <>
+                  Com pelo menos <strong>4 de folga</strong> ({effCourts * 4 + 4} jogadoras para{' '}
+                  {effCourts} quadras) o rodízio anda sozinho e todo mundo descansa entre um jogo e
+                  outro.
+                </>
+              )}
             </div>
           )}
 
@@ -574,6 +610,22 @@ function descreverGrupos(tamanhos: number[]): string {
   if (tamanhos.every((t) => t === tamanhos[0])) return `${n} grupos de ${tamanhos[0]}`
   const lista = tamanhos.slice(0, -1).join(', ') + ' e ' + tamanhos[n - 1]
   return `${n} grupos: ${lista}`
+}
+
+/** Quantas de cada grupo ficam de fora por vez — 0 quer dizer sem descanso. */
+function descreverFolga(tamanhos: number[]): string {
+  const folgas = tamanhos.map((t) => t % 4)
+  if (folgas.every((f) => f === 0)) {
+    const t = Math.min(...tamanhos)
+    return t === 4
+      ? 'Grupos de 4 não revezam: as mesmas quatro jogam tudo, uma partida atrás da outra.'
+      : 'Nenhum grupo tem folga: quem termina já volta, sem descanso entre as partidas.'
+  }
+  const min = Math.min(...folgas)
+  const max = Math.max(...folgas)
+  const quantas = min === max ? `${min}` : `${min} a ${max}`
+  const verbo = max === 1 ? 'fica' : 'ficam'
+  return `${quantas} de cada grupo ${verbo} de fora por vez, revezando — é o que dá descanso entre as partidas.`
 }
 
 /** "3 de cada 8 (38%)" — o quanto o pódio do grupo é disputado. */
@@ -817,6 +869,18 @@ function PlayDetail({
     for (const m of proximas.values()) for (const id of jogadorasDaPartida(m)) comprometidas.add(id)
     return session.player_ids.filter((id) => !comprometidas.has(id))
   }, [ocupadas, proximas, session.player_ids])
+
+  /**
+   * Da para montar alguma coisa na quadra parada? So se houver alguem livre no
+   * grupo de alguma partida que ainda falta -- quatro livres de um grupo que ja
+   * terminou o rodizio dele nao servem para nada.
+   */
+  const podeMontar = useMemo(() => {
+    if (livresAgora.length === 0) return false
+    if (!session.groups || session.groups.length <= 1) return true
+    const comPendente = new Set(pendentes.map((m) => grupoDe.get(m.team_a[0])))
+    return livresAgora.some((id) => comPendente.has(grupoDe.get(id)))
+  }, [livresAgora, pendentes, grupoDe, session.groups])
 
   /**
    * A fila de verdade: o que sobra depois das quadras, na ordem em que deve
@@ -1143,6 +1207,7 @@ function PlayDetail({
                   editable={editable}
                   onMontar={montarNaQuadraParada}
                   grupoDe={grupoDe}
+                  podeMontar={podeMontar}
                 />
               )
             }
@@ -1380,6 +1445,7 @@ function QuadraEsperando({
   editable,
   onMontar,
   grupoDe,
+  podeMontar,
 }: {
   quadra: number
   restam: number
@@ -1388,6 +1454,8 @@ function QuadraEsperando({
   onMontar: () => void
   /** Grupo de cada jogadora, quando o play e em grupos. */
   grupoDe?: Map<string, number>
+  /** Ha alguem livre no grupo de alguma partida que ainda falta? */
+  podeMontar: boolean
 }) {
   const { nameOf } = useStore()
   const emGrupos = Boolean(grupoDe && grupoDe.size > 0)
@@ -1399,9 +1467,7 @@ function QuadraEsperando({
       porGrupo.set(g, [...(porGrupo.get(g) ?? []), id])
     }
   }
-  const daParaMontar = emGrupos
-    ? [...porGrupo.values()].some((ids) => ids.length >= 1)
-    : livres.length >= 1
+  // (o pai decide: livre em grupo sem partida pendente nao adianta de nada)
   return (
     <div className="match vazia">
       <div className="match-head"><span>Quadra {quadra}</span><span>livre</span></div>
@@ -1435,7 +1501,7 @@ function QuadraEsperando({
                   <strong>Livres agora:</strong> {livres.map(nameOf).join(', ')}
                 </div>
               )}
-              {editable && daParaMontar && (
+              {editable && podeMontar && (
                 <button className="btn pink sm block" style={{ marginTop: 8 }} onClick={onMontar}>
                   🔄 Montar partida com quem está livre
                 </button>

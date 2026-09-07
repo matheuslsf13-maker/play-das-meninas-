@@ -165,6 +165,35 @@ de 11 para 33 nos grupos de 11. Quem escolhe o tamanho do grupo vê o total na
 tela. **Grupos de 4, 5, 8, 9 e 12 são os tamanhos "redondos"** — não precisam de
 repetição nenhuma.
 
+## A folga também é por grupo — e briga com a justiça
+
+A folga de um grupo é `tamanho % 4`: quantas ficam de fora enquanto as outras
+jogam. Ela é no máximo **3** — nunca 4, porque com 4 sobrando o grupo já enche
+mais uma quadra.
+
+| grupo | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| quadras | 1 | 1 | 1 | 1 | 2 | 2 | 2 | 2 | 3 | 3 |
+| **fora por vez** | **0** | 1 | 2 | 3 | **0** | 1 | 2 | 3 | **0** | 1 |
+| duplas repetidas | 0 | 0 | 1 | 2 | 0 | 0 | 1 | 2 | 0 | 0 |
+
+Repare no cruzamento: **4, 8 e 12 são justos (zero repetição) mas não têm
+folga** — ninguém descansa. **5, 9 e 13 são justos E têm folga**: são os
+tamanhos ideais.
+
+O aviso 🪑 dizia sempre a mesma coisa ("a quadra que acabar primeiro vai esperar
+as outras"), e com **grupos de 4 isso é falso**: cada grupo enche exatamente uma
+quadra, então a quadra não espera ninguém — a próxima partida é das mesmas
+quatro meninas, que jogam as 3 partidas seguidas sem parar. O problema existe,
+mas é outro: falta descanso, não sobra espera. O texto agora escolhe entre três
+explicações (grupo de 4 · uma quadra só · várias quadras disputando o mesmo
+grupo) e a recomendação em grupos aponta para 5/9/13, não para "+4 jogadoras",
+que dentro de um grupo é impossível.
+
+Pela mesma razão, o botão "montar partida com quem está livre" só aparece
+quando há alguém livre **no grupo de alguma partida que ainda falta**: quatro
+livres de um grupo que já terminou o rodízio dele não servem para nada.
+
 ## Em grupos, quem limita as quadras é o GRUPO, não o total
 
 Cada partida precisa de **quatro meninas do mesmo grupo**. Então um grupo de 6
