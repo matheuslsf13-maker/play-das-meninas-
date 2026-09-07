@@ -9,7 +9,9 @@ import {
   type Substituicao,
   ordemDeEspera,
   ordemPrevista,
+  jogosDoRodizio,
   parceirasDoRodizio,
+  repeticoesPorJogadora,
   partidasDoRodizio,
   quadrasSimultaneas,
   planToMatches,
@@ -276,6 +278,11 @@ function NewPlay({
   const totalPartidas = tamanhos.reduce((t, n) => t + partidasDoRodizio(n), 0)
   const parceirasMin = Math.min(...tamanhos.map(parceirasDoRodizio))
   const parceirasMax = Math.max(...tamanhos.map(parceirasDoRodizio))
+  // jogos e parceiras nao sao a mesma coisa: num grupo de 6 cada uma joga com
+  // as outras 5 e ainda repete uma, entao sao 6 jogos para 5 parceiras
+  const jogosMin = Math.min(...tamanhos.map(jogosDoRodizio))
+  const jogosMax = Math.max(...tamanhos.map(jogosDoRodizio))
+  const repetem = Math.max(...tamanhos.map(repeticoesPorJogadora))
   const restPorVez = selected.length - effCourts * 4
 
   function toggle(id: string) {
@@ -418,7 +425,19 @@ function NewPlay({
                     ? `as outras ${parceirasMin}`
                     : `${parceirasMin} a ${parceirasMax} parceiras`}
                 </strong>
-                , exatamente uma vez com cada.
+                , exatamente uma vez com cada, e joga{' '}
+                <strong>
+                  {jogosMin === jogosMax ? `${jogosMin} partidas` : `${jogosMin} a ${jogosMax} partidas`}
+                </strong>{' '}
+                — o mesmo tanto para todas.
+                {repetem > 0 && (
+                  <>
+                    {' '}
+                    Como as duplas não fecham em partidas inteiras, cada uma repete{' '}
+                    <strong>{repetem === 1 ? '1 parceira' : `${repetem} parceiras`}</strong> — a
+                    mesma quantidade para todas, para ninguém jogar a mais que as outras.
+                  </>
+                )}
               </>
             )}{' '}
             Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos.
@@ -468,7 +487,7 @@ function NewPlay({
 
           {format === 'todas' && totalPartidas > 40 && (
             <div className="banner warn" style={{ margin: '10px 0 0' }}>
-              ⏱️ São <strong>{totalPartidas} partidas</strong> e cada uma joga {parceirasMax} vezes —
+              ⏱️ São <strong>{totalPartidas} partidas</strong> e cada uma joga {jogosMax} vezes —
               pode ser longo para uma noite só. O modo <strong>em grupos</strong> resolve isso:
               com grupos de 8 cada menina joga 7 partidas.
             </div>

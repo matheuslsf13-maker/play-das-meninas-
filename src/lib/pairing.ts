@@ -110,10 +110,36 @@ export function quadrasSimultaneas(tamanhos: number[]): number {
   return Math.max(1, tamanhos.reduce((t, n) => t + Math.floor(n / 4), 0))
 }
 
+/**
+ * Quantas duplas cada jogadora precisa REPETIR para todas jogarem o mesmo
+ * tanto.
+ *
+ * Todas com todas uma vez da n(n-1)/2 duplas, e cada partida gasta duas delas.
+ * Quando n e 6, 7, 10, 11... essa conta nao fecha em partidas inteiras com
+ * todo mundo jogando igual: num grupo de 6 sao 15 duplas, sobra uma, e a saida
+ * antiga (uma dupla ja formada joga de novo) dava um jogo a mais para exatamente
+ * DUAS meninas do grupo.
+ *
+ * A saida certa e repetir a mesma quantidade de duplas para cada uma:
+ * - n % 4 == 0 ou 1 -> fecha sozinho, ninguem repete
+ * - n % 4 == 2      -> cada uma repete 1 parceira (as repetidas formam pares)
+ * - n % 4 == 3      -> cada uma repete 2 (as repetidas formam um ciclo)
+ */
+export function repeticoesPorJogadora(jogadoras: number): number {
+  const r = jogadoras % 4
+  return r === 2 ? 1 : r === 3 ? 2 : 0
+}
+
 /** Quantas partidas o rodizio de um grupo desse tamanho gera. */
 export function partidasDoRodizio(jogadoras: number): number {
   if (jogadoras < 4) return 0
-  return Math.ceil((jogadoras * (jogadoras - 1)) / 4)
+  return (jogadoras * (jogadoras - 1 + repeticoesPorJogadora(jogadoras))) / 4
+}
+
+/** Quantos jogos cada uma faz -- igual para todas do grupo. */
+export function jogosDoRodizio(jogadoras: number): number {
+  if (jogadoras < 4) return 0
+  return jogadoras - 1 + repeticoesPorJogadora(jogadoras)
 }
 
 /** Com quantas parceiras diferentes cada uma joga. */
@@ -356,6 +382,11 @@ function umRodizio(ids: string[], ctx: Contexto): Partida[] {
     sobras.push(...orfas)
   })
 
+  // As duplas que repetem entram AQUI, junto das sobras, e nao como remendo no
+  // fim: escolhidas assim, cada jogadora repete a mesma quantidade de vezes e
+  // o grupo inteiro termina com o mesmo numero de jogos.
+  sobras.push(...duplasQueRepetem(ids, repeticoesPorJogadora(ids.length)))
+
   // as sobras vem de rondas diferentes, entao podem dividir jogadora
   const { partidas: extras, orfas } = emparelhar(sobras, ctx)
   partidas.push(...extras)
@@ -372,6 +403,25 @@ function umRodizio(ids: string[], ctx: Contexto): Partida[] {
 
   melhorarConfrontos(partidas, ctx)
   return partidas
+}
+
+/**
+ * As duplas que vao jogar duas vezes, escolhidas para cair igualmente sobre
+ * todas as jogadoras do grupo.
+ *
+ * `k = 1` (grupo par): pares soltos -- cada uma aparece exatamente uma vez.
+ * `k = 2` (grupo impar): um ciclo passando por todas -- cada uma aparece duas.
+ * A ordem e sorteada, entao nao e sempre a mesma dupla que repete.
+ */
+function duplasQueRepetem(ids: string[], k: number): Duo[] {
+  if (k <= 0 || ids.length < 4) return []
+  const v = shuffle(ids)
+  if (k === 1) {
+    const out: Duo[] = []
+    for (let i = 0; i + 1 < v.length; i += 2) out.push([v[i], v[i + 1]])
+    return out
+  }
+  return v.map((id, i) => [id, v[(i + 1) % v.length]] as Duo)
 }
 
 /** Indice da dupla cujas jogadoras menos aparecem nas sobras ate agora. */
@@ -438,17 +488,31 @@ function rodizioDoGrupo(
   if (ids.length < 4) return []
   let melhor: Partida[] = []
   let melhorCusto = Infinity
-  for (let t = 0; t < 10; t++) {
+  for (let t = 0; t < 24; t++) {
     // cada tentativa comeca do mesmo ponto: os confrontos ja marcados fora
     const ctx: Contexto = { ratings, antes, dia: new Map(diaAteAgora) }
     const cand = umRodizio(ids, ctx)
-    const custo = custoDoRodizio(cand, { ratings, antes, dia: diaAteAgora })
+    // ninguem jogar a mais que a outra vale mais que qualquer ajuste fino de
+    // confronto: uma partida a mais para duas meninas e injustica visivel
+    const custo =
+      desigualdadeDeJogos(cand, ids) * 1e6 +
+      custoDoRodizio(cand, { ratings, antes, dia: diaAteAgora })
     if (custo < melhorCusto) {
       melhorCusto = custo
       melhor = cand
     }
   }
   return melhor
+}
+
+/** Diferenca entre quem mais joga e quem menos joga no grupo. */
+function desigualdadeDeJogos(partidas: Partida[], ids: string[]): number {
+  const jogos = new Map(ids.map((id) => [id, 0]))
+  for (const p of partidas) {
+    for (const id of jogadorasDaPartida(p)) jogos.set(id, (jogos.get(id) ?? 0) + 1)
+  }
+  const v = [...jogos.values()]
+  return Math.max(...v) - Math.min(...v)
 }
 
 /* ------------------------------------------------------------------

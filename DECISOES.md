@@ -130,6 +130,41 @@ formadas, então o rodízio continua intacto. Cada linha marca com 🆕 quem ain
 não entrou em quadra nenhuma vez (e quem está jogando agora **não** conta como
 "ainda não jogou", que era um erro da primeira versão do aviso).
 
+## Todas jogam o mesmo tanto, mesmo quando a conta não fecha
+
+Um grupo de `n` gera `n(n-1)/2` duplas e cada partida gasta duas. Quando `n` é
+**6, 7, 10, 11** (ou seja, `n % 4` é 2 ou 3) essa conta **não fecha** em partidas
+inteiras com todo mundo jogando igual.
+
+A saída antiga era: sobrou uma dupla sem adversária, então uma dupla já formada
+joga de novo. Medido, isso dava **um jogo a mais para exatamente duas meninas**:
+
+| grupo | antes | depois |
+|---|---|---|
+| 6 | 8 partidas — 2 fazem 6 jogos, 4 fazem 5 | **9 partidas — todas fazem 6** |
+| 7 | 11 — 2 fazem 7, 5 fazem 6 | **14 — todas fazem 8** |
+| 10 | 23 — 2 fazem 10, 8 fazem 9 | **25 — todas fazem 10** |
+| 11 | 28 — 2 fazem 11, 9 fazem 10 | **33 — todas fazem 12** |
+
+Grupos de 4, 5, 8, 9, 12, 13 sempre fecharam certo e não mudaram.
+
+**A correção**: em vez de remendar no fim, as duplas que repetem entram no
+sorteio **escolhidas para cair igualmente sobre todas** — um emparelhamento
+perfeito quando cada uma repete 1 (grupo par), um ciclo passando por todas
+quando repete 2 (grupo ímpar). Aí `partidas = n(n-1+k)/4` com `k` = 0, 0, 1, 2
+conforme `n % 4`, e a divisão é sempre exata.
+
+O gerador ainda escolhe entre 24 tentativas, mas agora **desigualdade de jogos
+pesa 1.000.000** — mais que qualquer ajuste de confronto. Conferido em 30
+sorteios de cada tamanho de 4 a 13: jogos iguais, repetições iguais, todas as
+duplas formadas, contagem exata, e o espalhamento de confrontos continua em 1–4
+(o mesmo de antes). Quadra parada: 0% nos formatos usuais.
+
+⚠️ **O custo é tempo de quadra.** Grupos de 7 passam de 11 para 14 partidas, e
+de 11 para 33 nos grupos de 11. Quem escolhe o tamanho do grupo vê o total na
+tela. **Grupos de 4, 5, 8, 9 e 12 são os tamanhos "redondos"** — não precisam de
+repetição nenhuma.
+
 ## Em grupos, quem limita as quadras é o GRUPO, não o total
 
 Cada partida precisa de **quatro meninas do mesmo grupo**. Então um grupo de 6

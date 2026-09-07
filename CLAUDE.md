@@ -49,7 +49,9 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
   puxa da fila a partida cujas quatro meninas estão livres, dando preferência a
   quem está fora há mais tempo (`proximasDasQuadras`).
 - Rodízio completo: cada uma faz dupla com cada uma das outras exatamente uma
-  vez. **Quem enfrenta quem também é escolhido**, sempre pela dupla que menos
+  vez. **Todas jogam o mesmo número de partidas.** Quando a conta não fecha
+  (grupos de 6, 7, 10, 11), algumas duplas repetem — escolhidas para que cada
+  jogadora repita a mesma quantidade (`repeticoesPorJogadora`). **Quem enfrenta quem também é escolhido**, sempre pela dupla que menos
   se enfrentou até ali — o alvo é espalhar, não zerar (é impossível zerar).
 - **Dois formatos**, escolhidos ao criar o play: `todas` (rodízio único) e
   `grupos` (o mesmo rodízio dentro de grupos formados por nível, grupo 1 com as
