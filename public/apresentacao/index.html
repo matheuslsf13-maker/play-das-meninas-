@@ -184,8 +184,8 @@
   .formato.todas h3 { color: var(--rosa); }
 
   /* ------- balanca do Elo ------- */
-  .balanca { display: flex; flex-direction: column; gap: 10px; }
-  .peso { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 12px 15px;
+  .balanca { display: flex; flex-direction: column; gap: 6px; }
+  .peso { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; padding: 8px 15px;
     border-radius: 14px; border: 1px solid var(--linha); }
   .peso .quem { font-size: clamp(13.5px, 1.95vw, 16px); }
   .peso .quem b { font-weight: 900; }
@@ -415,13 +415,14 @@
       <span class="selo">Como o app sabe o seu nível</span>
       <h2>Importa <em>de quem</em> você ganhou</h2>
       <p class="linha-fina">
-        Cada partida move a sua nota conforme <strong>quem estava do outro lado</strong>.
-        Não é média de vitórias — é o peso de cada uma delas:
+        Cada partida move a sua nota conforme <strong>quem estava do outro lado</strong> —
+        não é média de vitórias, é o peso de cada uma:
       </p>
       <div class="balanca">
-        <div class="peso muito"><span class="quem">Você venceu <b>quem está jogando muito bem</b></span><span class="ganho">sobe muito ↑</span></div>
-        <div class="peso pouco"><span class="quem">Você venceu <b>quem ainda está começando</b></span><span class="ganho">sobe pouco</span></div>
-        <div class="peso caro"><span class="quem">Você perdeu <b>para quem esperava perder</b></span><span class="ganho">custa caro ↓</span></div>
+        <div class="peso muito"><span class="quem">Ganhou de <b>quem está jogando melhor que você</b></span><span class="ganho">sobe muito ↑</span></div>
+        <div class="peso pouco"><span class="quem">Ganhou de <b>quem ainda está começando</b></span><span class="ganho">sobe pouco ↑</span></div>
+        <div class="peso pouco"><span class="quem">Perdeu para <b>quem está jogando melhor que você</b></span><span class="ganho">cai pouco ↓</span></div>
+        <div class="peso caro"><span class="quem">Perdeu para <b>quem ainda está começando</b></span><span class="ganho">cai muito ↓</span></div>
       </div>
       <p class="linha-fina">
         É essa nota que <strong>divide os grupos e equilibra as duplas</strong> — e ela se atualiza
