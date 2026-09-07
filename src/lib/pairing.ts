@@ -99,6 +99,17 @@ export function formarGrupos(
   return out
 }
 
+/**
+ * Quantas quadras dao para encher ao mesmo tempo, dados os tamanhos dos grupos.
+ *
+ * Cada partida precisa de quatro meninas do MESMO grupo, entao um grupo de 6 so
+ * alimenta uma quadra por vez: 12 meninas em dois grupos de 6 enchem duas
+ * quadras, nao tres. Sem grupos, passe `[total]` e a conta vira o total / 4.
+ */
+export function quadrasSimultaneas(tamanhos: number[]): number {
+  return Math.max(1, tamanhos.reduce((t, n) => t + Math.floor(n / 4), 0))
+}
+
 /** Quantas partidas o rodizio de um grupo desse tamanho gera. */
 export function partidasDoRodizio(jogadoras: number): number {
   if (jogadoras < 4) return 0
@@ -779,17 +790,33 @@ export type SubstituicaoOpts = {
   espera: Map<string, number>
   ratings: Map<string, number>
   history: History
+  /**
+   * Os grupos do play, quando ha. A substituta tem que ser do MESMO grupo da
+   * partida: uma quadra com duas de cada grupo nao pertence a rodizio nenhum, e
+   * os pontos dela entrariam nos dois podios de uma vez.
+   */
+  grupos?: string[][] | null
 }
 
 export type Substituicao = { sai: string; entra: string }
 
 export function liberarPartida(opts: SubstituicaoOpts): Substituicao[] {
-  const { time, ocupadas, todas, espera, ratings, history } = opts
+  const { time, ocupadas, todas, espera, ratings, history, grupos } = opts
   const noTime = new Set(time)
   const presas = time.filter((id) => ocupadas.has(id))
   if (presas.length === 0) return []
 
-  const livres = todas.filter((id) => !ocupadas.has(id) && !noTime.has(id))
+  // no modo em grupos so entra quem e do grupo desta partida
+  let doGrupo: Set<string> | null = null
+  if (grupos && grupos.length > 1) {
+    const g = grupos.find((x) => x.includes(time[0]))
+    if (!g) return []
+    doGrupo = new Set(g)
+  }
+
+  const livres = todas.filter(
+    (id) => !ocupadas.has(id) && !noTime.has(id) && (!doGrupo || doGrupo.has(id)),
+  )
   if (livres.length === 0) return []
 
   const trocas: Substituicao[] = []

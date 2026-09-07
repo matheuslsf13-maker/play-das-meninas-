@@ -130,6 +130,29 @@ formadas, então o rodízio continua intacto. Cada linha marca com 🆕 quem ain
 não entrou em quadra nenhuma vez (e quem está jogando agora **não** conta como
 "ainda não jogou", que era um erro da primeira versão do aviso).
 
+## Em grupos, quem limita as quadras é o GRUPO, não o total
+
+Cada partida precisa de **quatro meninas do mesmo grupo**. Então um grupo de 6
+só enche **uma** quadra por vez, por mais gente que tenha no play: 12 jogadoras
+em 2 grupos de 6 dão **2 quadras**, não 3, e ficam 2 de fora **de cada grupo**.
+
+A conta certa é `soma de piso(tamanho do grupo ÷ 4)` (`quadrasSimultaneas`), e
+não `total ÷ 4`. Enquanto foi `total ÷ 4`, a tela de criar o play dizia
+"12 jogadoras em 3 quadras, ninguém fica de fora" — errado nas duas metades — e
+ainda gravava o play com uma quadra a mais do que o rodízio consegue encher.
+Conferido contra o motor: em todos os cenários testados, `quadrasSimultaneas`
+bate exatamente com quantas quadras o `proximasDasQuadras` consegue preencher.
+
+Pela mesma razão, **a substituição da quadra parada não pode cruzar grupos**.
+O botão "montar partida com quem está livre" trocava por qualquer uma que
+estivesse de fora — e com 2 grupos de 6 as livres são 2 de cada grupo, então a
+partida sairia com duas de um grupo e duas do outro. Isso não pertence a rodízio
+nenhum e os pontos entrariam nos **dois** pódios ao mesmo tempo. `liberarPartida`
+agora recebe os grupos e só aceita substituta do mesmo grupo da partida; o botão
+percorre a fila até achar uma partida que dê para montar, e a tela lista as
+livres separadas por grupo (`G1: … · G2: …`) explicando por que não dá para
+juntar.
+
 ## Precisa sobrar gente para as quadras não pararem
 
 Descoberto na simulação: **quando quadras × 4 = número de meninas, ninguém sobra

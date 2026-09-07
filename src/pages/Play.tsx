@@ -6,10 +6,12 @@ import {
   gerarFila,
   jogadorasDaPartida,
   liberarPartida,
+  type Substituicao,
   ordemDeEspera,
   ordemPrevista,
   parceirasDoRodizio,
   partidasDoRodizio,
+  quadrasSimultaneas,
   planToMatches,
   proximasDasQuadras,
   refazerFila,
@@ -250,9 +252,6 @@ function NewPlay({
     .filter((p) => p.active || selected.includes(p.id))
     .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 
-  const maxCourts = Math.max(1, Math.floor(selected.length / 4))
-  const effCourts = Math.min(courts, maxCourts)
-
   const forca = useMemo(() => ratings(data, date), [data, date])
 
   // no modo em grupos o app decide quantos grupos cabem: quem escolhe e o
@@ -265,6 +264,14 @@ function NewPlay({
     [format, selected, forca, porGrupo],
   )
   const tamanhos = grupos.map((g) => g.length)
+
+  // as quadras saem dos GRUPOS, nao do total: cada partida precisa de quatro do
+  // mesmo grupo, entao dois grupos de 6 (12 meninas) enchem duas quadras e nao
+  // tres, e sobram duas de cada grupo esperando
+  const maxCourts = quadrasSimultaneas(tamanhos)
+  const effCourts = Math.min(courts, maxCourts)
+  /** O limite veio da divisao em grupos, e nao de faltar gente? */
+  const travadoPorGrupo = grupos.length > 1 && maxCourts < Math.floor(selected.length / 4)
 
   const totalPartidas = tamanhos.reduce((t, n) => t + partidasDoRodizio(n), 0)
   const parceirasMin = Math.min(...tamanhos.map(parceirasDoRodizio))
@@ -417,7 +424,24 @@ function NewPlay({
             Quem vence leva <strong>{target} menos os games da adversária</strong> em pontos.
           </p>
 
-          {selected.length >= 4 && effCourts < courts && (
+          {selected.length >= 4 && effCourts < courts && travadoPorGrupo && (
+            <div className="banner err" style={{ margin: '10px 0 0' }}>
+              🏐 <strong>Não dá para usar {courts} quadras com {descreverGrupos(tamanhos)}.</strong>{' '}
+              Cada partida precisa de <strong>quatro meninas do mesmo grupo</strong>, então um grupo
+              de {Math.min(...tamanhos)} só enche{' '}
+              {Math.floor(Math.min(...tamanhos) / 4) === 1
+                ? 'uma quadra'
+                : `${Math.floor(Math.min(...tamanhos) / 4)} quadras`}{' '}
+              por vez — mesmo tendo {selected.length} jogadoras no total.
+              <br />
+              Vou montar o play com <strong>{effCourts} quadra(s)</strong>, e{' '}
+              <strong>{restPorVez} ficam de fora</strong> por vez, revezando dentro do próprio
+              grupo. Um grupo precisa de <strong>8 meninas para alimentar 2 quadras</strong>, 12
+              para 3, e assim por diante — então, para usar as {courts}, aumente o tamanho do grupo.
+            </div>
+          )}
+
+          {selected.length >= 4 && effCourts < courts && !travadoPorGrupo && (
             <div className="banner err" style={{ margin: '10px 0 0' }}>
               🏐 <strong>Não dá para usar {courts} quadras com {selected.length} jogadoras.</strong>{' '}
               Cada quadra ocupa 4 meninas ao mesmo tempo, então {courts} quadras precisam de{' '}
@@ -496,7 +520,9 @@ function NewPlay({
         {selected.length >= 4 && (
           <div className="banner info" style={{ marginTop: 14, marginBottom: 0 }}>
             Com <strong>{selected.length} jogadoras</strong> dá para usar <strong>{effCourts} quadra(s)</strong> ao mesmo tempo
-            {restPorVez > 0 ? ` (${restPorVez} esperam a vez, e entra sempre quem está fora há mais tempo)` : ' (todas jogam ao mesmo tempo)'}.
+            {restPorVez > 0
+              ? ` (${restPorVez} esperam a vez${grupos.length > 1 ? ', revezando dentro do próprio grupo' : ''}, e entra sempre quem está fora há mais tempo)`
+              : ' (todas jogam ao mesmo tempo)'}.
             {effCourts < courts && ' Ajustei o número de quadras para caber todo mundo.'}
             <br />
             Para equilibrar as duplas e dividir os grupos, o app não usa o ranking do mês:
@@ -964,28 +990,47 @@ function PlayDetail({
   }
 
   /** Troca as ocupadas por quem esta livre, mantendo equilibrio e duplas novas. */
-  function liberarQuadra(m: Match) {
+  /**
+   * Tenta destravar uma partida trocando quem esta presa em outra quadra.
+   * Devolve as trocas sem salvar, para quem chama poder tentar a proxima.
+   */
+  function tentarLiberar(m: Match): Substituicao[] {
     const indisponiveis = new Set(ocupadas)
     for (const p of proximas.values()) {
       if (p.id === m.id) continue
       for (const id of jogadorasDaPartida(p)) indisponiveis.add(id)
     }
-    const trocas = liberarPartida({
+    return liberarPartida({
       time: jogadorasDaPartida(m) as [string, string, string, string],
       ocupadas: indisponiveis,
       todas: session.player_ids,
       espera,
       ratings: ratings(data, session.date),
       history: buildHistory(playedMatches(data)),
+      // sem isto a quadra parada era preenchida com meninas de outro grupo
+      grupos: session.groups,
     })
-    if (trocas.length === 0) {
-      onToast('Não há ninguém livre para entrar agora')
+  }
+
+  /**
+   * A primeira partida da fila que da para montar agora. Em grupos a primeira
+   * pode ser de um grupo sem ninguem livre, e a de outro grupo resolve.
+   */
+  function montarNaQuadraParada() {
+    for (const alvo of pendentes) {
+      const trocas = tentarLiberar(alvo)
+      if (trocas.length === 0) continue
+      let atualizada = alvo
+      for (const t of trocas) atualizada = trocarNaPartida(atualizada, t.sai, t.entra)
+      saveMatches([atualizada])
+      onToast(trocas.map((t) => `${nameOf(t.sai)} → ${nameOf(t.entra)}`).join(' · '))
       return
     }
-    let atualizada = m
-    for (const t of trocas) atualizada = trocarNaPartida(atualizada, t.sai, t.entra)
-    saveMatches([atualizada])
-    onToast(trocas.map((t) => `${nameOf(t.sai)} → ${nameOf(t.entra)}`).join(' · '))
+    onToast(
+      session.groups && session.groups.length > 1
+        ? 'Ninguém livre no grupo certo — a quadra espera'
+        : 'Não há ninguém livre para entrar agora',
+    )
   }
 
   function trocar(m: Match, sai: string, entra: string) {
@@ -1077,10 +1122,8 @@ function PlayDetail({
                   restam={pendentes.length}
                   livres={livresAgora}
                   editable={editable}
-                  onMontar={() => {
-                    const alvo = pendentes[0]
-                    if (alvo) liberarQuadra(alvo)
-                  }}
+                  onMontar={montarNaQuadraParada}
+                  grupoDe={grupoDe}
                 />
               )
             }
@@ -1317,14 +1360,29 @@ function QuadraEsperando({
   livres,
   editable,
   onMontar,
+  grupoDe,
 }: {
   quadra: number
   restam: number
   livres: string[]
   editable: boolean
   onMontar: () => void
+  /** Grupo de cada jogadora, quando o play e em grupos. */
+  grupoDe?: Map<string, number>
 }) {
   const { nameOf } = useStore()
+  const emGrupos = Boolean(grupoDe && grupoDe.size > 0)
+  // quatro livres nao bastam: elas tem que ser do MESMO grupo
+  const porGrupo = new Map<number, string[]>()
+  if (emGrupos) {
+    for (const id of livres) {
+      const g = (grupoDe as Map<string, number>).get(id) ?? 0
+      porGrupo.set(g, [...(porGrupo.get(g) ?? []), id])
+    }
+  }
+  const daParaMontar = emGrupos
+    ? [...porGrupo.values()].some((ids) => ids.length >= 1)
+    : livres.length >= 1
   return (
     <div className="match vazia">
       <div className="match-head"><span>Quadra {quadra}</span><span>livre</span></div>
@@ -1339,10 +1397,26 @@ function QuadraEsperando({
           </div>
           {livres.length > 0 ? (
             <>
-              <div className="tiny" style={{ marginTop: 6 }}>
-                <strong>Livres agora:</strong> {livres.map(nameOf).join(', ')}
-              </div>
-              {editable && livres.length >= 1 && (
+              {emGrupos ? (
+                <>
+                  <div className="tiny" style={{ marginTop: 6 }}>
+                    <strong>Livres agora:</strong>{' '}
+                    {[...porGrupo.entries()]
+                      .sort((x, y) => x[0] - y[0])
+                      .map(([g, ids]) => `G${g}: ${ids.map(nameOf).join(', ')}`)
+                      .join(' · ')}
+                  </div>
+                  <div className="tiny muted" style={{ marginTop: 4 }}>
+                    Uma partida precisa de <strong>quatro do mesmo grupo</strong> — juntar meninas de
+                    grupos diferentes não valeria para rodízio nenhum.
+                  </div>
+                </>
+              ) : (
+                <div className="tiny" style={{ marginTop: 6 }}>
+                  <strong>Livres agora:</strong> {livres.map(nameOf).join(', ')}
+                </div>
+              )}
+              {editable && daParaMontar && (
                 <button className="btn pink sm block" style={{ marginTop: 8 }} onClick={onMontar}>
                   🔄 Montar partida com quem está livre
                 </button>
