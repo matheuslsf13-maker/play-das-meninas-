@@ -46,8 +46,60 @@ export function streakLevel(streak: number): StreakLevel | null {
   return faixa ? { emoji: faixa.emoji, title: faixa.title } : null
 }
 
-/** Quantas jogadoras sobem ao podio do dia. */
+/** Quantas jogadoras sobem ao podio -- de cada grupo, quando ha grupos. */
 export const PODIO = 3
+
+/**
+ * Quantas sobem ao podio de um grupo desse tamanho.
+ *
+ * Nunca mais da METADE do grupo: num grupo de 4, tres subirem seria dar status
+ * a quase todo mundo e o 🔥 perderia a graca. Fora isso a conta e simples --
+ * a chance de podio e `vagas / tamanho do grupo`, entao o tamanho do grupo e o
+ * que decide se o 🔥 e disputado (grupos de 8+) ou barato (grupos pequenos).
+ */
+export function vagasDoPodio(tamanhoDoGrupo: number): number {
+  return Math.max(1, Math.min(PODIO, Math.floor(tamanhoDoGrupo / 2)))
+}
+
+/** Um podio: o do dia inteiro, ou o de um grupo. */
+export type PodioDoDia = {
+  /** Numero do grupo (1, 2, 3...) ou null quando o play e todas com todas. */
+  grupo: number | null
+  /** As primeiras do grupo, com empate exato na ultima vaga subindo junto. */
+  rows: PlayerStat[]
+  /** Todas as jogadoras do grupo, para saber de onde vem quem ficou de fora. */
+  membros: string[]
+}
+
+/**
+ * Os podios de um dia de play.
+ *
+ * No modo em grupos e UM PODIO POR GRUPO -- cada grupo e um rodizio fechado, e
+ * dominar o grupo 2 tem o mesmo merito que dominar o grupo 1 (ja medido: as
+ * duas coisas rendem a mesma media de pontos). Um podio unico obrigaria os
+ * grupos a competirem entre si numa conta que nao se comunica.
+ */
+export function podiosDoDia(rank: PlayerStat[], grupos?: string[][] | null): PodioDoDia[] {
+  const primeiras = (lista: PlayerStat[], vagas: number): PlayerStat[] => {
+    if (lista.length === 0) return []
+    const corte = lista[Math.min(vagas, lista.length) - 1]
+    // empate exato na ultima vaga sobe junto
+    return lista.filter(
+      (x) => x.points > corte.points || (x.points === corte.points && balance(x) >= balance(corte)),
+    )
+  }
+
+  if (!grupos || grupos.length <= 1) {
+    return [{ grupo: null, rows: primeiras(rank, PODIO), membros: rank.map((x) => x.player_id) }]
+  }
+
+  return grupos.map((g, i) => {
+    const doGrupo = new Set(g)
+    // `rank` ja vem ordenado, entao filtrar preserva a classificacao
+    const doRank = rank.filter((x) => doGrupo.has(x.player_id))
+    return { grupo: i + 1, rows: primeiras(doRank, vagasDoPodio(g.length)), membros: g }
+  })
+}
 
 /** O status maximo: 8 semanas seguidas no podio. */
 export const MAX_STREAK = 8
@@ -176,14 +228,10 @@ export function computeStreaks(data: AppData): Streaks {
     )
     winnersOf.set(s.id, champions.map((c) => c.player_id))
 
-    // podio do dia: o top 3, incluindo quem empata com a terceira
-    const corte = rank[Math.min(PODIO, rank.length) - 1]
-    const podio = rank.filter(
-      (x) =>
-        x.points > corte.points ||
-        (x.points === corte.points && balance(x) >= balance(corte)),
+    // podio do dia -- um por grupo, quando o play e em grupos
+    const noPodio = new Set(
+      podiosDoDia(rank, s.groups).flatMap((p) => p.rows.map((x) => x.player_id)),
     )
-    const noPodio = new Set(podio.map((x) => x.player_id))
     podiumOf.set(s.id, [...noPodio])
 
     const jogaram = new Set<string>()

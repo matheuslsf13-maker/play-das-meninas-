@@ -8,3 +8,6 @@ tsconfig.tsbuildinfo
 
 # arquivo temporario que o vite deixa para tras no Windows
 vite.config.ts.timestamp-*
+
+# config local do editor/agent
+.claude

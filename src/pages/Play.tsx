@@ -25,8 +25,8 @@ import {
   ratings,
   rankPlayers,
 } from '../lib/stats'
-import { buildDayPoster } from '../lib/poster'
-import { computeStreaks, streakLevel } from '../lib/streaks'
+import { buildDayPoster, buildDayPosterGrupos, type PosterRow } from '../lib/poster'
+import { computeStreaks, podiosDoDia, streakLevel, vagasDoPodio } from '../lib/streaks'
 import { useWakeLock } from '../lib/wakelock'
 import { useStore } from '../lib/store'
 import { dateLabel, todayISO, uid, type Match, type PlayFormat, type PlaySession } from '../lib/types'
@@ -354,7 +354,7 @@ function NewPlay({
                 🔁 Todas com todas
               </button>
               <button className={format === 'grupos' ? 'on' : ''} onClick={() => setFormat('grupos')}>
-                🅰️ Em grupos
+                👥 Em grupos
               </button>
             </div>
             <em className="hint">
@@ -388,6 +388,13 @@ function NewPlay({
                     ? 'com menos de 8 confirmadas não dá para dividir: vai sair um grupo só'
                     : `com ${selected.length} confirmadas o app monta ${descreverGrupos(tamanhos)} — grupo 1 com quem está jogando melhor`}
                 </em>
+                {selected.length >= 8 && (
+                  <em className="hint" style={{ marginTop: 4 }}>
+                    🔥 Cada grupo tem o seu pódio, e quem sobe segura a sequência:{' '}
+                    <strong>{descreverPodios(tamanhos)}</strong>. Grupos menores deixam o status
+                    fácil demais.
+                  </em>
+                )}
               </div>
             </div>
           )}
@@ -524,6 +531,17 @@ function descreverGrupos(tamanhos: number[]): string {
   return `${n} grupos: ${lista}`
 }
 
+/** "3 de cada 8 (38%)" — o quanto o pódio do grupo é disputado. */
+function descreverPodios(tamanhos: number[]): string {
+  const vagas = tamanhos.map(vagasDoPodio)
+  const total = vagas.reduce((t, v) => t + v, 0)
+  const jogadoras = tamanhos.reduce((t, v) => t + v, 0)
+  const chance = Math.round((100 * total) / jogadoras)
+  const iguais = tamanhos.every((t) => t === tamanhos[0])
+  const detalhe = iguais ? `${vagas[0]} de cada ${tamanhos[0]}` : `${total} das ${jogadoras}`
+  return `${detalhe} (${chance}%)`
+}
+
 /** Devolve a partida com uma jogadora trocada por outra. */
 function trocarNaPartida(m: Match, sai: string, entra: string): Match {
   const troca = (id: string) => (id === sai ? entra : id)
@@ -568,6 +586,12 @@ function PlayDetail({
     const ms = playedMatches(data, { sessionId: session.id })
     return rankPlayers(computeStats(ms), nameOf)
   }, [data, session.id, nameOf])
+
+  /** Um podio por grupo quando o play e em grupos; um so quando nao e. */
+  const podios = useMemo(
+    () => podiosDoDia(dayRows, session.groups),
+    [dayRows, session.groups],
+  )
 
   const doneCount = matches.filter(isPlayed).length
   const finished = session.status === 'finished'
@@ -793,9 +817,8 @@ function PlayDetail({
     setGerando(true)
     try {
       const passosDoDia = new Map(passos.map((x) => [x.player_id, x]))
-      const linhas = dayRows.slice(0, 8).map((s, i) => {
-        // o fogo so aparece para a campea do dia, se ela tem status
-        const st = i === 0 ? passosDoDia.get(s.player_id) : undefined
+      const linhaDe = (s: (typeof dayRows)[number], comStatus: boolean): PosterRow => {
+        const st = comStatus ? passosDoDia.get(s.player_id) : undefined
         const lvl = st && st.streak >= 2 ? streakLevel(st.streak) : null
         return {
           name: nameOf(s.player_id),
@@ -808,8 +831,24 @@ function PlayDetail({
           statusEmoji: lvl?.emoji,
           statusPoints: undefined,
         }
-      })
-      const blob = await buildDayPoster(dateLabel(session.date), linhas, `${import.meta.env.BASE_URL}logo.png`)
+      }
+      const logo = `${import.meta.env.BASE_URL}logo.png`
+      const blob =
+        podios.length > 1
+          ? await buildDayPosterGrupos(
+              dateLabel(session.date),
+              podios.map((p) => ({
+                titulo: `Grupo ${p.grupo}`,
+                rows: p.rows.map((s) => linhaDe(s, false)),
+              })),
+              logo,
+            )
+          : // o fogo so aparece para a campea do dia, se ela tem status
+            await buildDayPoster(
+              dateLabel(session.date),
+              dayRows.slice(0, 8).map((s, i) => linhaDe(s, i === 0)),
+              logo,
+            )
       setArte({ url: URL.createObjectURL(blob), blob })
     } catch (e) {
       onToast('Não consegui gerar a imagem')
@@ -974,7 +1013,7 @@ function PlayDetail({
 
       {grupos && grupos.length > 1 && (
         <div className="card">
-          <div className="section-title">🅰️ Grupos</div>
+          <div className="section-title">👥 Grupos</div>
           <div className="stack">
             {grupos.map((g, i) => (
               <div key={i} className="grupo-box">
@@ -1144,12 +1183,31 @@ function PlayDetail({
                   {award.usouVida && ' (uma vida foi consumida para segurar o status hoje)'}
                 </div>
               )}
-              <RankTable rows={dayRows} />
+              {podios.length > 1 ? (
+                podios.map((p) => (
+                  <div key={p.grupo} style={{ marginBottom: 14 }}>
+                    <div className="section-title" style={{ fontSize: 13 }}>
+                      🏆 Pódio do grupo {p.grupo}
+                    </div>
+                    <RankTable rows={p.rows} />
+                  </div>
+                ))
+              ) : (
+                <RankTable rows={dayRows} />
+              )}
+              {podios.length > 1 && (
+                <>
+                  <div className="section-title" style={{ fontSize: 13 }}>📊 Classificação do dia</div>
+                  <RankTable rows={dayRows} />
+                </>
+              )}
               <button
                 className="btn pink block"
                 style={{ marginTop: 12 }}
                 onClick={async () => {
-                  const ok = await shareOrCopy(dayRankingText(session.date, session.title, dayRows, nameOf, award))
+                  const ok = await shareOrCopy(
+                    dayRankingText(session.date, session.title, dayRows, nameOf, award, podios),
+                  )
                   onToast(ok ? 'Ranking do dia copiado 💬' : 'Não consegui copiar')
                 }}
               >💬 Compartilhar no WhatsApp</button>

@@ -1,8 +1,9 @@
 # Play de Todas — guia rápido do projeto
 
 App do campeonato de **beach tennis** feminino da **V3 Arena**, jogado toda
-sexta. Monta duplas equilibradas, lança placares, fecha o dia e o mês, e mostra
-rankings e estatísticas. Tudo é operado principalmente **pelo celular**.
+**segunda às 20h**. Monta duplas equilibradas, lança placares, fecha o dia e o
+mês, e mostra rankings e estatísticas. Tudo é operado principalmente **pelo
+celular**.
 
 **Antes de mudar regra do campeonato, algoritmo de duplas ou o "quem está em
 quadra", leia [`DECISOES.md`](DECISOES.md)** — ele guarda o que já foi medido e
@@ -53,13 +54,16 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
 - **Dois formatos**, escolhidos ao criar o play: `todas` (rodízio único) e
   `grupos` (o mesmo rodízio dentro de grupos formados por nível, grupo 1 com as
   mais bem pontuadas). Nos grupos os pontos continuam **individuais** e o
-  ranking do dia é **um só**.
-- **Status 🔥**: mantido terminando a sexta no **pódio do dia** (top 3). Faltar
-  na sexta zera o status, mesmo com vida. Escada em `src/lib/streaks.ts`, de
+  ranking do dia é **um só** — mas o **pódio é um por grupo**.
+- **Status 🔥**: mantido terminando o play no **pódio do dia** (top 3; nos
+  grupos, o top 3 **de cada grupo**, nunca mais que metade do grupo —
+  `vagasDoPodio`). Faltar zera o status, mesmo com vida. Escada em
+  `src/lib/streaks.ts`, de
   🔥 *Em chamas* (2) até 👑💎🌟 **Duquesa da V3** (8+). No fim do mês a jogadora
   escolhe **usar** (vira pontos, zera) ou **preservar** (segue e ganha 1 vida).
 - **O mês fecha na mão**, no botão "🏁 Finalizar o mês" do Ranking (dá para
-  reabrir). A premiação acontece na última sexta, antes de o calendário virar.
+  reabrir). A premiação acontece no último play do mês, antes de o calendário
+  virar.
 - **O ranking zera todo mês, o histórico não.** A força que equilibra as duplas e
   divide os grupos sai de `ratings()`, que é um **Elo**: cada partida move a nota
   conforme quem estava do outro lado, então **vencer quem está melhor rende muito
@@ -68,7 +72,7 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
   você ganhou — e por isso quebrava no modo em grupos.
 - **Play avulso** (`sessions.ranked = false`): conta no histórico e na força,
   mas **não soma no ranking do mês nem mexe nas sequências**. Serve para o jogo
-  de segunda que não é o campeonato.
+  fora de calendário que não é o campeonato.
 - **Partida iniciada**: quem está em quadra agora é definido pelo botão
   "▶️ Partida iniciada"; lançar o placar encerra. Isso alimenta o aviso de
   quadra parada e a troca de jogadoras.

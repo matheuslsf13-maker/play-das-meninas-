@@ -340,7 +340,8 @@ export default function Ranking({
             })}
           </div>
           <p className="tiny muted" style={{ marginBottom: 0 }}>
-            O status se mantém enquanto ela terminar o play no <strong>pódio do dia</strong> (top {PODIO}).
+            O status se mantém enquanto ela terminar o play no <strong>pódio do dia</strong> (top {PODIO} —
+            e, quando o play é em grupos, o top {PODIO} <strong>do grupo dela</strong>).
             Ele só vira pontos no fechamento do mês, se ela escolher usar.
           </p>
         </div>
@@ -466,7 +467,8 @@ export default function Ranking({
         <hr className="sep" style={{ borderColor: 'rgba(255,255,255,.15)' }} />
         <div className="section-title" style={{ marginBottom: 6 }}>🔥 Bônus em chamas</div>
         <p className="small" style={{ color: 'var(--muted)', marginTop: 0, marginBottom: 8 }}>
-          Terminou várias semanas seguidas no <strong>pódio do dia</strong> (top {PODIO})? Você ganha um status:
+          Terminou várias semanas seguidas no <strong>pódio do dia</strong> (top {PODIO}; nos plays em
+          grupos, o pódio é um por grupo)? Você ganha um status:
         </p>
         <div className="grid2" style={{ gap: 8 }}>
           {STREAK_LADDER.map((x) => {

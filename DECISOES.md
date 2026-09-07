@@ -153,7 +153,8 @@ longo demais para uma noite. O modo em grupos resolve: o mesmo rodízio acontece
 - Os grupos são formados **por nível**: o grupo 1 leva quem está jogando melhor,
   para os jogos ficarem parelhos dentro do grupo.
 - **Os pontos continuam individuais e o ranking do dia é um só** — o grupo muda
-  contra quem você joga, não como você pontua.
+  contra quem você joga, não como você pontua. O **pódio**, esse sim, é um por
+  grupo (ver [o porquê](#no-modo-em-grupos-um-pódio-por-grupo)).
 - Grupos de 8 fecham perfeitos (28 duplas, 14 partidas, zero repetição).
 
 ## Força: um Elo, porque importa **de quem** você ganhou
@@ -254,14 +255,19 @@ da quadra fica no pódio toda semana** (fica fora em 3 a 5 de cada 10 sextas) e
 sextas seguidas continua sendo difícil: a campeã de um dia repete no dia
 seguinte em **16% a 27%** das vezes.
 
-### No modo em grupos, o pódio mede outra coisa — e está tudo bem
+### No modo em grupos: um pódio por grupo
 
 Como cada grupo é um rodízio fechado, quem domina o grupo 2 pontua tanto quanto
-quem domina o grupo 1, e o ranking do dia é um só. A melhor jogadora de todas
-cai de 61% para **32% de pódio** (2 grupos) ou **17%** (3 grupos).
+quem domina o grupo 1. O **ranking do dia continua um só** (os pontos são
+individuais), mas o **pódio é um por grupo**: 1º, 2º e 3º do grupo 1, 1º, 2º e
+3º do grupo 2, e assim por diante — e todos geram status normalmente.
 
-**Decidido: mantém o pódio único.** A pergunta era se um grupo dominaria o
-pódio, deixando o outro de fora. Medido em 800 sextas, 16 jogadoras, 2 grupos:
+**Antes era um pódio único.** Mudou por dois motivos. Um pódio só obriga grupos
+que nunca se enfrentam a competirem na mesma conta; e, pior, fazia a chance de
+status depender de **quantas apareceram**: 19% numa noite de 16, 13% com 24,
+10% com 32 — quem veio numa segunda cheia era punida por isso.
+
+Que os grupos são justos entre si já estava medido (800 plays, 16 jogadoras):
 
 | | grupo 1 (mais fortes) | grupo 2 |
 |---|---|---|
@@ -288,11 +294,54 @@ Faz sentido: entre iguais, cada partida se aproxima de um cara ou coroa. Então
 o pódio de um grupo equilibrado **não** premia "quem é a melhor" — premia
 **quem jogou melhor naquela noite**.
 
-Isso não derruba a decisão, sustenta ela: se o pódio fosse previsível, a mesma
-jogadora seria Duquesa para sempre e o mini-game morreria. O que faz o status
-valer alguma coisa é justamente ele não estar garantido para ninguém — e a
-constancia ao longo das semanas, que é o que o sistema realmente premia, continua
-sendo mérito de verdade.
+#### E dobrar as vagas não estraga o status?
+
+Era a dúvida óbvia: com 2 grupos passam a subir 6 de 16 em vez de 3. Medido
+antes de soltar (16 semanas seguidas, 40 temporadas simuladas):
+
+| | todas com todas (16) | 2 grupos de 8, pódio por grupo |
+|---|---|---|
+| vagas de pódio por play | 3 de 16 (19%) | 6 de 16 (38%) |
+| chegam a 🔥 *Em chamas* (2) | 5,3 de 16 | **12,9 de 16** |
+| chegam a 🔥🔥🔥 *Imparável* (4) | 1,9 | 3,5 |
+| chegam a 👑💎🌟 *Duquesa* (8) | 0,6 | **0,3** |
+| maior sequência da temporada | 7,8 | 7,3 |
+
+**O topo da escada não inflacionou — encolheu um pouco.** Parece contraintuitivo
+com o dobro de vagas, mas é o mesmo efeito da tabela acima: dentro de um grupo
+equilibrado o pódio é mais imprevisível, então **emendar 8 semanas fica mais
+difícil, não menos**. No pódio único as melhores dominavam semana após semana, e
+era isso que permitia sequências longas.
+
+Quem inflaciona é a **base** da escada: o 🔥 *Em chamas* deixa de ser raro —
+81% das meninas encostam nele em 16 semanas, contra 33%. É o degrau mais barato
+(3 pontos), então foi aceito de propósito: em modo grupos o 🔥 vira convite, e
+os títulos de verdade continuam onde estavam.
+
+Em pontos o efeito é pequeno: no fechamento do mês há **2,4** jogadoras com
+status em vez de 1,5, e cada status vale **8,9** pontos em média em vez de 12,2
+(as sequências são mais curtas).
+
+#### A alavanca é o tamanho do grupo, não o número de grupos
+
+A chance de pódio é `vagas ÷ tamanho do grupo` — e, diferente do pódio único,
+**não depende mais de quantas apareceram**:
+
+| tamanho do grupo | 6 | 8 | 10 | 12 |
+|---|---|---|---|---|
+| chance de pódio | 50% | 38% | 30% | 25% |
+
+A tela de criar o play mostra essa porcentagem (`descreverPodios`), para a
+organizadora escolher sabendo o que está fazendo.
+
+**Teto:** o pódio nunca leva mais da **metade** do grupo (`vagasDoPodio`, em
+`streaks.ts`). Sem isso, um grupo de 4 — que o app aceita montar — daria status
+a 3 das 4 meninas.
+
+> Quando isso entrou não existia nenhum play em grupos gravado, então a mudança
+> não reescreveu histórico nenhum. Se um dia existir, lembre que `computeStreaks`
+> **recalcula tudo do zero** a cada carregamento: mexer na regra do pódio muda
+> sequências antigas retroativamente.
 
 Quatro regras candidatas foram medidas. A escolhida foi **pódio do dia (top 3)
 + 1 vida**:

@@ -27,6 +27,14 @@ const GOLD = '#ffc940'
 const SILVER = '#cdd3e6'
 const BRONZE = '#f0a86e'
 
+/** Um podio de grupo na arte do dia. */
+export type PosterGrupo = {
+  /** "Grupo 1", "Grupo 2"... */
+  titulo: string
+  /** As tres primeiras do grupo. */
+  rows: PosterRow[]
+}
+
 /** Arte do fechamento do dia: podio do play e o resto da classificacao. */
 export async function buildDayPoster(
   data: string,
@@ -34,6 +42,109 @@ export async function buildDayPoster(
   logoUrl?: string,
 ): Promise<Blob> {
   return desenhar(data, 'RANKING DO DIA', rows, logoUrl)
+}
+
+/**
+ * Arte do dia quando o play foi em grupos: um podio por grupo.
+ *
+ * O podio grande com os degraus so cabe uma vez em 1080x1350. Com dois ou tres
+ * grupos ele vira um bloco compacto por grupo -- foto, medalha, nome e pontos --
+ * que cabe empilhado e continua legivel no celular.
+ */
+export async function buildDayPosterGrupos(
+  data: string,
+  grupos: PosterGrupo[],
+  logoUrl?: string,
+): Promise<Blob> {
+  const canvas = document.createElement('canvas')
+  canvas.width = W
+  canvas.height = H
+  const c = canvas.getContext('2d')
+  if (!c) throw new Error('Este navegador não conseguiu gerar a imagem.')
+
+  const fotos = await Promise.all(
+    grupos.map((g) => Promise.all(g.rows.map((r) => loadImage(r.photo)))),
+  )
+  const logo = await loadImage(logoUrl ?? null)
+
+  fundo(c)
+  cabecalho(c, data, 'RANKING DO DIA', logo)
+
+  const topo = 400
+  const sobra = H - topo - 110 // 110 = espaco do rodape
+  const respiro = 26 // um pouco de ar entre um grupo e o outro
+  const n = Math.max(1, grupos.length)
+  const alturaGrupo = Math.min(330, (sobra - respiro * (n - 1)) / n)
+  // com dois grupos os blocos nao enchem a arte: centraliza, senao fica um
+  // buraco grande entre o ultimo grupo e o rodape
+  const y0 = topo + Math.max(0, (sobra - (alturaGrupo * n + respiro * (n - 1))) / 2)
+  grupos.forEach((g, i) =>
+    blocoDeGrupo(c, g, fotos[i], y0 + i * (alturaGrupo + respiro), alturaGrupo),
+  )
+
+  rodape(c)
+  return await new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Falha ao gerar a imagem'))), 'image/png'),
+  )
+}
+
+/** Um grupo: faixa com o nome e as tres primeiras em linhas com foto. */
+function blocoDeGrupo(
+  c: CanvasRenderingContext2D,
+  grupo: PosterGrupo,
+  fotos: (HTMLImageElement | null)[],
+  y: number,
+  altura: number,
+) {
+  const cores = [GOLD, SILVER, BRONZE]
+  const rotulos = ['1º', '2º', '3º']
+
+  c.textAlign = 'left'
+  c.fillStyle = PINK
+  faixa(c, 84, y, 250, 46, 23)
+  c.fillStyle = '#fff'
+  c.font = '800 28px system-ui, Segoe UI, Arial, sans-serif'
+  c.letterSpacing = '2px'
+  c.fillText(grupo.titulo.toUpperCase(), 106, y + 32)
+  c.letterSpacing = '0px'
+
+  const linhas = grupo.rows
+  const alturaLinha = Math.min(80, (altura - 66) / Math.max(1, linhas.length))
+  // as vitorias so entram quando a linha e alta o bastante para duas linhas de
+  // texto; com muitos grupos a linha encolhe e fica so nome e pontos
+  const cabeDetalhe = alturaLinha >= 62
+
+  linhas.forEach((r, i) => {
+    const cor = cores[i] ?? BRONZE
+    const ly = y + 62 + i * alturaLinha
+    const meio = ly + alturaLinha / 2 - 4
+    c.fillStyle = i === 0 ? 'rgba(255,201,64,.14)' : 'rgba(255,255,255,.07)'
+    faixa(c, 84, ly, W - 168, alturaLinha - 8, 18)
+
+    const raio = Math.min(28, (alturaLinha - 24) / 2)
+    retrato(c, fotos[i] ?? null, r.name, 140, meio, raio, cor)
+
+    c.textAlign = 'left'
+    c.fillStyle = cor
+    c.font = '800 30px system-ui, Segoe UI, Arial, sans-serif'
+    c.fillText(rotulos[i] ?? `${i + 1}º`, 192, meio + 10)
+
+    c.fillStyle = '#fff'
+    c.font = '700 32px system-ui, Segoe UI, Arial, sans-serif'
+    c.fillText(cortar(c, r.name, 480), 250, cabeDetalhe ? meio - 1 : meio + 10)
+
+    if (cabeDetalhe) {
+      c.fillStyle = 'rgba(255,255,255,.55)'
+      c.font = '700 21px system-ui, Segoe UI, Arial, sans-serif'
+      c.fillText(`${r.wins}V · ${r.losses}D`, 250, meio + 23)
+    }
+
+    c.textAlign = 'right'
+    c.fillStyle = GOLD
+    c.font = '800 31px system-ui, Segoe UI, Arial, sans-serif'
+    c.fillText(`${r.points} pts`, W - 112, meio + 10)
+    c.textAlign = 'left'
+  })
 }
 
 /** Arte do fechamento do mes. */
