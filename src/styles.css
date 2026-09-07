@@ -942,3 +942,20 @@ textarea.input { line-height: 1.45; }
 }
 .card.apresentacao .prox-titulo { color: var(--purple); }
 .card.apresentacao .prox-selo { background: var(--purple); }
+
+/* o card e um link: sem cursor, sem pastilha e sem resposta ao toque ele
+   passava por um aviso qualquer, e ninguem clicava */
+.card.apresentacao { cursor: pointer; transition: transform .12s ease, filter .12s ease; }
+.card.apresentacao:hover { filter: brightness(1.06); }
+.card.apresentacao:active { transform: translateY(1px); }
+.prox-abrir {
+  flex: none;
+  align-self: center;
+  background: var(--purple);
+  color: var(--sempre-escuro);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  white-space: nowrap;
+}

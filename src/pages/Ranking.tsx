@@ -191,9 +191,11 @@ export default function Ranking({
           <span className="prox-titulo">Primeira vez aqui?</span>
           <span className="prox-info">Como funciona o Play de Todas</span>
           <span className="prox-acao">
-            participação, instalação, formatos e o mini-game dos status →
+            participação, instalação, formatos e o mini-game dos status
           </span>
         </span>
+        {/* sem isto o card parece so um aviso: nada dizia que da para tocar */}
+        <span className="prox-abrir">Abrir ↗</span>
       </a>
 
       {emAndamento && (
