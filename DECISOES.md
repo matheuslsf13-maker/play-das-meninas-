@@ -190,9 +190,37 @@ explicações (grupo de 4 · uma quadra só · várias quadras disputando o mesm
 grupo) e a recomendação em grupos aponta para 5/9/13, não para "+4 jogadoras",
 que dentro de um grupo é impossível.
 
-Pela mesma razão, o botão "montar partida com quem está livre" só aparece
-quando há alguém livre **no grupo de alguma partida que ainda falta**: quatro
-livres de um grupo que já terminou o rodízio dele não servem para nada.
+### O botão "montar partida com quem está livre" foi removido
+
+Ele existia para não deixar quadra parada: trocava quem estava ocupada por quem
+estava livre. Só que isso **desfaz uma dupla do rodízio** e dá um jogo a mais
+para uma menina e a menos para outra — exatamente o que a regra de todas
+jogarem o mesmo tanto proíbe.
+
+Medido antes de tirar (100 noites por cenário, partidas de 8 a 20 minutos, com
+as quadras terminando em horas diferentes):
+
+| formato | quadra parada | maior espera |
+|---|---|---|
+| grupos de 4, 3 quadras | 0,1% | 5 min |
+| grupos de 7 (14), 2 quadras | 0,2% | 12 min |
+| grupos de 6 (12), 2 quadras | 0,5% | 17 min |
+| grupos de 8 (24), 4 quadras | 0,8% | 18 min |
+| grupos de 8 (16), 4 quadras | 10,2% | 19 min |
+| grupos de 9 (18), 4 quadras | 11,1% | 17 min |
+| **sem grupos, 16 em 4 quadras** | **19,6%** | **173 min** |
+
+Em grupos a espera máxima é de uns 17 minutos — **uma partida**. Esperar sai
+mais barato que quebrar o rodízio. O caso feio (173 min) é o do `courts × 4 =
+jogadoras` sem grupos, que já tem aviso próprio na criação, e cuja solução é
+usar uma quadra a menos, não mexer nas duplas.
+
+A troca continua existindo para o que ela realmente serve: **alguém foi embora**.
+Aí a organizadora troca a jogadora na mão, no card da partida, escolhendo quem
+entra — decisão explícita, não remendo automático.
+
+A quadra parada agora só explica a situação: quais estão livres (separadas por
+grupo) e por que não dá para juntá-las.
 
 ## Em grupos, quem limita as quadras é o GRUPO, não o total
 

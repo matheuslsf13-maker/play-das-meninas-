@@ -5,8 +5,6 @@ import {
   formarGrupos,
   gerarFila,
   jogadorasDaPartida,
-  liberarPartida,
-  type Substituicao,
   ordemDeEspera,
   ordemPrevista,
   jogosDoRodizio,
@@ -871,18 +869,6 @@ function PlayDetail({
   }, [ocupadas, proximas, session.player_ids])
 
   /**
-   * Da para montar alguma coisa na quadra parada? So se houver alguem livre no
-   * grupo de alguma partida que ainda falta -- quatro livres de um grupo que ja
-   * terminou o rodizio dele nao servem para nada.
-   */
-  const podeMontar = useMemo(() => {
-    if (livresAgora.length === 0) return false
-    if (!session.groups || session.groups.length <= 1) return true
-    const comPendente = new Set(pendentes.map((m) => grupoDe.get(m.team_a[0])))
-    return livresAgora.some((id) => comPendente.has(grupoDe.get(id)))
-  }, [livresAgora, pendentes, grupoDe, session.groups])
-
-  /**
    * A fila de verdade: o que sobra depois das quadras, na ordem em que deve
    * acontecer. Sem isto a tela mostrava a ordem de geracao, e quem tinha
    * acabado de jogar aparecia na frente de quem ainda nem tinha entrado.
@@ -1073,49 +1059,6 @@ function PlayDetail({
   }
 
   /** Troca as ocupadas por quem esta livre, mantendo equilibrio e duplas novas. */
-  /**
-   * Tenta destravar uma partida trocando quem esta presa em outra quadra.
-   * Devolve as trocas sem salvar, para quem chama poder tentar a proxima.
-   */
-  function tentarLiberar(m: Match): Substituicao[] {
-    const indisponiveis = new Set(ocupadas)
-    for (const p of proximas.values()) {
-      if (p.id === m.id) continue
-      for (const id of jogadorasDaPartida(p)) indisponiveis.add(id)
-    }
-    return liberarPartida({
-      time: jogadorasDaPartida(m) as [string, string, string, string],
-      ocupadas: indisponiveis,
-      todas: session.player_ids,
-      espera,
-      ratings: ratings(data, session.date),
-      history: buildHistory(playedMatches(data)),
-      // sem isto a quadra parada era preenchida com meninas de outro grupo
-      grupos: session.groups,
-    })
-  }
-
-  /**
-   * A primeira partida da fila que da para montar agora. Em grupos a primeira
-   * pode ser de um grupo sem ninguem livre, e a de outro grupo resolve.
-   */
-  function montarNaQuadraParada() {
-    for (const alvo of pendentes) {
-      const trocas = tentarLiberar(alvo)
-      if (trocas.length === 0) continue
-      let atualizada = alvo
-      for (const t of trocas) atualizada = trocarNaPartida(atualizada, t.sai, t.entra)
-      saveMatches([atualizada])
-      onToast(trocas.map((t) => `${nameOf(t.sai)} → ${nameOf(t.entra)}`).join(' · '))
-      return
-    }
-    onToast(
-      session.groups && session.groups.length > 1
-        ? 'Ninguém livre no grupo certo — a quadra espera'
-        : 'Não há ninguém livre para entrar agora',
-    )
-  }
-
   function trocar(m: Match, sai: string, entra: string) {
     saveMatches([trocarNaPartida(m, sai, entra)])
   }
@@ -1205,9 +1148,7 @@ function PlayDetail({
                   restam={pendentes.length}
                   livres={livresAgora}
                   editable={editable}
-                  onMontar={montarNaQuadraParada}
                   grupoDe={grupoDe}
-                  podeMontar={podeMontar}
                 />
               )
             }
@@ -1443,19 +1384,14 @@ function QuadraEsperando({
   restam,
   livres,
   editable,
-  onMontar,
   grupoDe,
-  podeMontar,
 }: {
   quadra: number
   restam: number
   livres: string[]
   editable: boolean
-  onMontar: () => void
   /** Grupo de cada jogadora, quando o play e em grupos. */
   grupoDe?: Map<string, number>
-  /** Ha alguem livre no grupo de alguma partida que ainda falta? */
-  podeMontar: boolean
 }) {
   const { nameOf } = useStore()
   const emGrupos = Boolean(grupoDe && grupoDe.size > 0)
@@ -1501,10 +1437,12 @@ function QuadraEsperando({
                   <strong>Livres agora:</strong> {livres.map(nameOf).join(', ')}
                 </div>
               )}
-              {editable && podeMontar && (
-                <button className="btn pink sm block" style={{ marginTop: 8 }} onClick={onMontar}>
-                  🔄 Montar partida com quem está livre
-                </button>
+              {editable && (
+                <div className="tiny muted" style={{ marginTop: 6 }}>
+                  A quadra espera a próxima partida terminar — trocar meninas aqui desfaria uma dupla
+                  do rodízio e daria um jogo a mais para uma e a menos para outra. Se alguém
+                  <strong> precisou ir embora</strong>, troque a jogadora direto no card da partida.
+                </div>
               )}
             </>
           ) : (

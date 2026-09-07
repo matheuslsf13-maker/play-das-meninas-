@@ -835,87 +835,14 @@ export function ordemPrevista(opts: {
 }
 
 /* ------------------------------------------------------------------
-   Quadra livre esperando quem ainda esta jogando.
+   NAO existe mais "montar partida com quem esta livre".
 
-   Ultimo recurso: quando nenhuma partida da fila tem as quatro jogadoras
-   livres, troca quem esta ocupada por quem esta livre. Quebra o rodizio (a
-   dupla formada aqui pode nao ser a que estava prevista), entao a tela so
-   oferece isso quando a quadra fica de fato parada.
+   Havia um `liberarPartida` que, com a quadra parada, trocava quem estava
+   ocupada por quem estava livre. Ele desfazia uma dupla do rodizio e dava um
+   jogo a mais para uma menina e a menos para outra -- o oposto da regra de
+   todas jogarem o mesmo tanto. Medido: em modo grupos a quadra fica parada de
+   0,1% a 11% do tempo e a maior espera e de uns 17 minutos, uma partida.
+   Esperar sai mais barato que quebrar o rodizio. Se alguem foi embora de
+   verdade, a troca continua existindo no card da partida, feita na mao.
    ------------------------------------------------------------------ */
 
-export type SubstituicaoOpts = {
-  /** As quatro jogadoras da partida que se quer comecar. */
-  time: [string, string, string, string]
-  /** Quem esta em quadra agora, em outras partidas. */
-  ocupadas: Set<string>
-  /** Todas as jogadoras do play. */
-  todas: string[]
-  /** Fila de espera (0 = fora ha mais tempo). */
-  espera: Map<string, number>
-  ratings: Map<string, number>
-  history: History
-  /**
-   * Os grupos do play, quando ha. A substituta tem que ser do MESMO grupo da
-   * partida: uma quadra com duas de cada grupo nao pertence a rodizio nenhum, e
-   * os pontos dela entrariam nos dois podios de uma vez.
-   */
-  grupos?: string[][] | null
-}
-
-export type Substituicao = { sai: string; entra: string }
-
-export function liberarPartida(opts: SubstituicaoOpts): Substituicao[] {
-  const { time, ocupadas, todas, espera, ratings, history, grupos } = opts
-  const noTime = new Set(time)
-  const presas = time.filter((id) => ocupadas.has(id))
-  if (presas.length === 0) return []
-
-  // no modo em grupos so entra quem e do grupo desta partida
-  let doGrupo: Set<string> | null = null
-  if (grupos && grupos.length > 1) {
-    const g = grupos.find((x) => x.includes(time[0]))
-    if (!g) return []
-    doGrupo = new Set(g)
-  }
-
-  const livres = todas.filter(
-    (id) => !ocupadas.has(id) && !noTime.has(id) && (!doGrupo || doGrupo.has(id)),
-  )
-  if (livres.length === 0) return []
-
-  const trocas: Substituicao[] = []
-  const time2 = [...time] as string[]
-  const usadas = new Set<string>()
-
-  for (const sai of presas) {
-    const candidatas = livres.filter((id) => !usadas.has(id))
-    if (candidatas.length === 0) break
-
-    const posicao = time2.indexOf(sai)
-    const melhor = candidatas
-      .map((entra) => {
-        const proposto = time2.map((id) => (id === sai ? entra : id))
-        // quem esta esperando ha mais tempo entra primeiro
-        return { entra, custo: custoDaPartida(proposto, ratings, history) + (espera.get(entra) ?? 0) * 45 }
-      })
-      .sort((a, b) => a.custo - b.custo)[0]
-
-    time2[posicao] = melhor.entra
-    usadas.add(melhor.entra)
-    trocas.push({ sai, entra: melhor.entra })
-  }
-  return trocas
-}
-
-/** Custo de uma partida ja montada, nos mesmos pesos do sorteio da fila. */
-function custoDaPartida(time: string[], ratings: Map<string, number>, hist: History): number {
-  const [p1, p2, p3, p4] = time
-  const r = (id: string) => ratings.get(id) ?? 2
-  let c = 0
-  c += 120 * ((hist.partner.get(pairKey(p1, p2)) ?? 0) + (hist.partner.get(pairKey(p3, p4)) ?? 0))
-  for (const x of [p1, p2]) {
-    for (const y of [p3, p4]) c += W_OPP_DIA * (hist.opponent.get(pairKey(x, y)) ?? 0)
-  }
-  c += W_BALANCE * Math.abs(r(p1) + r(p2) - r(p3) - r(p4))
-  return c
-}
