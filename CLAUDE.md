@@ -54,7 +54,11 @@ supabase/*.sql   migrações, rodadas na ordem numérica no SQL Editor
 - **Dois formatos**, escolhidos ao criar o play: `todas` (rodízio único) e
   `grupos` (o mesmo rodízio dentro de grupos formados por nível, grupo 1 com as
   mais bem pontuadas). Nos grupos os pontos continuam **individuais** e o
-  ranking do dia é **um só** — mas o **pódio é um por grupo**.
+  ranking do dia é **um só** — mas o **pódio é um por grupo**. No fim do play a
+  organizadora escolhe se gera o texto e a arte de **todos os grupos ou de um
+  só** (chips "Tudo / Grupo 1 / Grupo 2…" no modal do ranking do dia), e os dois
+  saem carimbados com o grupo. O status de **cada** medalhista aparece no texto
+  e na imagem.
 - **Status 🔥**: mantido terminando o play no **pódio do dia** (top 3; nos
   grupos, o top 3 **de cada grupo**, nunca mais que metade do grupo —
   `vagasDoPodio`). Faltar zera o status, mesmo com vida. Escada em

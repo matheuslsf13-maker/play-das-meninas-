@@ -602,12 +602,35 @@ function PlayDetail({
     return map
   }, [grupos])
 
-  // sequencias que avancaram neste play (so existe depois de finalizado)
+  // sequencias que avancaram neste play (so existe depois de finalizado);
+  // da maior para a menor, porque a maior e o destaque do texto e do banner
   const passos = useMemo(
-    () => computeStreaks(data).steps.filter((x) => x.session_id === session.id && x.streak >= 2),
+    () =>
+      computeStreaks(data)
+        .steps.filter((x) => x.session_id === session.id && x.streak >= 2)
+        .sort((a, b) => b.streak - a.streak),
     [data, session.id],
   )
-  const award = passos[0]
+  const streaksDoDia = useMemo(
+    () => new Map(passos.map((x) => [x.player_id, x.streak])),
+    [passos],
+  )
+
+  /** Grupo escolhido para gerar o texto e a arte; null = o play inteiro. */
+  const [grupoArte, setGrupoArte] = useState<number | null>(null)
+  const podiosSel = useMemo(
+    () => (grupoArte === null ? podios : podios.filter((p) => p.grupo === grupoArte)),
+    [podios, grupoArte],
+  )
+  const rowsSel = useMemo(
+    () => (grupoArte === null ? dayRows : dayRows.filter((s) => grupoDe.get(s.player_id) === grupoArte)),
+    [dayRows, grupoDe, grupoArte],
+  )
+  // o destaque e a maior sequencia entre quem esta neste recorte
+  const award = useMemo(() => {
+    const aqui = new Set(podiosSel.flatMap((p) => p.rows.map((x) => x.player_id)))
+    return passos.find((x) => aqui.has(x.player_id))
+  }, [passos, podiosSel])
   const awardLevel = award ? streakLevel(award.streak) : null
 
   // inicios e fins guardados no proprio celular, para nao dependerem da volta
@@ -816,39 +839,43 @@ function PlayDetail({
   async function gerarArteDoDia() {
     setGerando(true)
     try {
-      const passosDoDia = new Map(passos.map((x) => [x.player_id, x]))
+      // o status vai em TODAS as do podio: quem olha a arte quer saber em que
+      // degrau cada uma esta, nao so a campea
       const linhaDe = (s: (typeof dayRows)[number], comStatus: boolean): PosterRow => {
-        const st = comStatus ? passosDoDia.get(s.player_id) : undefined
-        const lvl = st && st.streak >= 2 ? streakLevel(st.streak) : null
+        const n = comStatus ? (streaksDoDia.get(s.player_id) ?? 0) : 0
+        const lvl = n >= 2 ? streakLevel(n) : null
         return {
           name: nameOf(s.player_id),
           points: s.points,
           wins: s.wins,
           losses: s.losses,
           photo: playerById(s.player_id)?.photo_url ?? null,
-          streak: st?.streak ?? 0,
+          streak: n,
           statusTitle: lvl?.title,
           statusEmoji: lvl?.emoji,
           statusPoints: undefined,
         }
       }
       const logo = `${import.meta.env.BASE_URL}logo.png`
-      const blob =
-        podios.length > 1
-          ? await buildDayPosterGrupos(
-              dateLabel(session.date),
-              podios.map((p) => ({
-                titulo: `Grupo ${p.grupo}`,
-                rows: p.rows.map((s) => linhaDe(s, false)),
-              })),
-              logo,
-            )
-          : // o fogo so aparece para a campea do dia, se ela tem status
-            await buildDayPoster(
-              dateLabel(session.date),
-              dayRows.slice(0, 8).map((s, i) => linhaDe(s, i === 0)),
-              logo,
-            )
+      const um = podiosSel.length === 1 ? podiosSel[0] : null
+      // o podio grande so serve para exatamente tres: com empate ou grupo
+      // pequeno o podio tem outro tamanho, e aí vale o bloco empilhado
+      const cabeNoPodioGrande = um !== null && (um.grupo === null || um.rows.length === 3)
+      const blob = cabeNoPodioGrande
+        ? await buildDayPoster(
+            dateLabel(session.date),
+            rowsSel.slice(0, 8).map((s, i) => linhaDe(s, i < um.rows.length)),
+            logo,
+            um.grupo === null ? 'RANKING DO DIA' : `RANKING DO DIA · GRUPO ${um.grupo}`,
+          )
+        : await buildDayPosterGrupos(
+            dateLabel(session.date),
+            podiosSel.map((p) => ({
+              titulo: p.grupo === null ? 'Pódio do dia' : `Grupo ${p.grupo}`,
+              rows: p.rows.map((s) => linhaDe(s, true)),
+            })),
+            logo,
+          )
       setArte({ url: URL.createObjectURL(blob), blob })
     } catch (e) {
       onToast('Não consegui gerar a imagem')
@@ -860,14 +887,19 @@ function PlayDetail({
 
   async function salvarArte() {
     if (!arte) return
-    const arquivo = new File([arte.blob], `play-${session.date}.png`, { type: 'image/png' })
+    const sufixo = grupoArte === null ? '' : `-grupo${grupoArte}`
+    const arquivo = new File([arte.blob], `play-${session.date}${sufixo}.png`, { type: 'image/png' })
     const nav = navigator as Navigator & {
       canShare?: (d: { files: File[] }) => boolean
       share?: (d: { files: File[]; text?: string }) => Promise<void>
     }
     if (nav.canShare?.({ files: [arquivo] }) && nav.share) {
       try {
-        await nav.share({ files: [arquivo], text: `${session.title} — ${dateLabel(session.date)} 🏐` })
+        const deQuem = grupoArte === null ? '' : ` · Grupo ${grupoArte}`
+        await nav.share({
+          files: [arquivo],
+          text: `${session.title} — ${dateLabel(session.date)}${deQuem} 🏐`,
+        })
         return
       } catch {
         /* cancelou: cai para o download */
@@ -1156,7 +1188,7 @@ function PlayDetail({
 
       {arte && (
         <Modal
-          title={`Play de ${dateLabel(session.date)}`}
+          title={`Play de ${dateLabel(session.date)}${grupoArte === null ? '' : ` — Grupo ${grupoArte}`}`}
           onClose={() => { URL.revokeObjectURL(arte.url); setArte(null) }}
         >
           <img src={arte.url} alt="Imagem do ranking do dia" style={{ width: '100%', borderRadius: 14 }} />
@@ -1189,35 +1221,79 @@ function PlayDetail({
                     <div className="section-title" style={{ fontSize: 13 }}>
                       🏆 Pódio do grupo {p.grupo}
                     </div>
-                    <RankTable rows={p.rows} />
+                    <RankTable rows={p.rows} fire={streaksDoDia} />
                   </div>
                 ))
               ) : (
-                <RankTable rows={dayRows} />
+                <RankTable rows={dayRows} fire={streaksDoDia} />
               )}
               {podios.length > 1 && (
                 <>
                   <div className="section-title" style={{ fontSize: 13 }}>📊 Classificação do dia</div>
-                  <RankTable rows={dayRows} />
+                  <RankTable rows={dayRows} fire={streaksDoDia} />
+                </>
+              )}
+              {podios.length > 1 && (
+                <>
+                  <div className="section-title" style={{ fontSize: 13, marginTop: 14 }}>
+                    📤 Mandar no grupo
+                  </div>
+                  {/* chips e nao `segmented`: com 4 ou 5 grupos os botoes fixos
+                      nao cabem na largura do celular */}
+                  <div className="chips-scroll" style={{ marginBottom: 8 }}>
+                    <button
+                      className={`chip ${grupoArte === null ? 'on' : 'off'}`}
+                      style={{ flex: 'none' }}
+                      onClick={() => setGrupoArte(null)}
+                    >
+                      📋 Tudo
+                    </button>
+                    {podios.map((p) => (
+                      <button
+                        key={p.grupo}
+                        className={`chip ${grupoArte === p.grupo ? 'on' : 'off'}`}
+                        style={{ flex: 'none' }}
+                        onClick={() => setGrupoArte(p.grupo)}
+                      >
+                        Grupo {p.grupo}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="tiny muted" style={{ marginTop: 0, marginBottom: 8 }}>
+                    O texto e a imagem saem só com {grupoArte === null ? 'todos os grupos' : `o grupo ${grupoArte}`},
+                    já escrito de qual grupo se trata.
+                  </p>
                 </>
               )}
               <button
                 className="btn pink block"
-                style={{ marginTop: 12 }}
+                style={{ marginTop: podios.length > 1 ? 0 : 12 }}
                 onClick={async () => {
                   const ok = await shareOrCopy(
-                    dayRankingText(session.date, session.title, dayRows, nameOf, award, podios),
+                    dayRankingText({
+                      date: session.date,
+                      title: session.title,
+                      rows: rowsSel,
+                      nameOf,
+                      podios: podiosSel,
+                      streaks: streaksDoDia,
+                      award,
+                    }),
                   )
                   onToast(ok ? 'Ranking do dia copiado 💬' : 'Não consegui copiar')
                 }}
-              >💬 Compartilhar no WhatsApp</button>
+              >
+                💬 Texto {grupoArte === null ? 'do dia' : `do grupo ${grupoArte}`} para o WhatsApp
+              </button>
               <button
                 className="btn purple block"
                 style={{ marginTop: 8 }}
                 disabled={gerando}
                 onClick={() => void gerarArteDoDia()}
               >
-                {gerando ? 'Montando a arte…' : '🏐 Gerar imagem do dia'}
+                {gerando
+                  ? 'Montando a arte…'
+                  : `🏐 Imagem ${grupoArte === null ? 'do dia' : `do grupo ${grupoArte}`}`}
               </button>
             </>
           )}

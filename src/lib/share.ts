@@ -27,13 +27,20 @@ function pts(n: number): string {
   return `${n} ${n === 1 ? 'pt' : 'pts'}`
 }
 
-/** Duas linhas: nome em destaque, numeros embaixo. */
+/**
+ * Duas linhas: nome em destaque, numeros embaixo.
+ *
+ * Quando a jogadora esta em chamas, o degrau vai junto na segunda linha -- o
+ * emoji sozinho nao diz se ela e "Em chamas" ou "Duquesa da V3".
+ */
 function bloco(i: number, nome: string, s: PlayerStat, streak = 0): string {
-  const fogo = streak >= 2 ? ` ${streakLevel(streak)?.emoji}` : ''
+  const lvl = streak >= 2 ? streakLevel(streak) : null
+  const fogo = lvl ? ` ${lvl.emoji}` : ''
   const bonus = s.bonus > 0 ? ` _(${s.points - s.bonus} + ${s.bonus} de status)_` : ''
+  const status = lvl ? ` · _${lvl.title} (${streak} seguidos)_` : ''
   return (
     `${posicao(i)} *${nome}*${fogo} — *${pts(s.points)}*${bonus}\n` +
-    `     ${s.wins}V ${s.losses}D · saldo ${comSinal(balance(s))}`
+    `     ${s.wins}V ${s.losses}D · saldo ${comSinal(balance(s))}${status}`
   )
 }
 
@@ -92,27 +99,45 @@ export function monthRankingText(
   return partes.join('\n')
 }
 
-export function dayRankingText(
-  date: string,
-  title: string,
-  rows: PlayerStat[],
-  nameOf: (id: string) => string,
-  award?: { player_id: string; streak: number; value: number },
-  podios?: PodioDoDia[],
-): string {
-  const partes: string[] = [`🎾 *${title.toUpperCase()}*`, `_${dateLabel(date)}_`]
+export type DayTextOpts = {
+  date: string
+  title: string
+  /** A classificacao do dia -- so do grupo escolhido, quando ha um. */
+  rows: PlayerStat[]
+  nameOf: (id: string) => string
+  /** Os podios a mostrar: todos, ou so o do grupo escolhido. */
+  podios?: PodioDoDia[]
+  /** Sequencia de cada jogadora depois deste play (so quem tem 2 ou mais). */
+  streaks?: Map<string, number>
+  /** O destaque do texto: a maior sequencia entre as que estao aqui. */
+  award?: { player_id: string; streak: number; value: number }
+}
 
-  const emGrupos = Boolean(podios && podios.length > 1)
+export function dayRankingText(opts: DayTextOpts): string {
+  const { date, title, rows, nameOf, podios, streaks, award } = opts
+  const seq = (id: string) => streaks?.get(id) ?? 0
+
+  // um grupo so escolhido: o titulo ja diz qual, para nao mandar no grupo do
+  // WhatsApp dois textos parecidos sem saber de quem e cada um
+  const soUmGrupo = podios?.length === 1 && podios[0].grupo !== null
+  const partes: string[] = [
+    `🎾 *${title.toUpperCase()}*`,
+    soUmGrupo
+      ? `_${dateLabel(date)} · Grupo ${podios?.[0].grupo}_`
+      : `_${dateLabel(date)}_`,
+  ]
+
+  const varios = Boolean(podios && podios.length > 1)
   const noPodio = new Set((podios ?? []).flatMap((p) => p.rows.map((x) => x.player_id)))
 
-  if (emGrupos) {
+  if (varios) {
     // um podio por grupo: cada grupo e um rodizio fechado e so compete consigo
     const grupoDe = new Map<string, number>()
     for (const p of podios as PodioDoDia[]) {
       for (const id of p.membros) grupoDe.set(id, p.grupo as number)
       partes.push(
         `\n*👥 GRUPO ${p.grupo}*\n` +
-          p.rows.map((s, i) => bloco(i, nameOf(s.player_id), s)).join('\n'),
+          p.rows.map((s, i) => bloco(i, nameOf(s.player_id), s, seq(s.player_id))).join('\n'),
       )
     }
     const fora = rows.filter((s) => !noPodio.has(s.player_id))
@@ -127,11 +152,18 @@ export function dayRankingText(
       )
     }
   } else {
-    partes.push('\n' + rows.slice(0, 3).map((s, i) => bloco(i, nameOf(s.player_id), s)).join('\n'))
-    const resto = rows.slice(3)
+    const podio = podios?.[0]?.rows ?? rows.slice(0, 3)
+    partes.push(
+      '\n' + podio.map((s, i) => bloco(i, nameOf(s.player_id), s, seq(s.player_id))).join('\n'),
+    )
+    const subiu = new Set(podio.map((s) => s.player_id))
+    const resto = rows.filter((s) => !subiu.has(s.player_id))
     if (resto.length > 0) {
       partes.push(
-        '\n' + resto.map((s, i) => `${i + 4}º ${nameOf(s.player_id)} — ${pts(s.points)}`).join('\n'),
+        '\n' +
+          resto
+            .map((s, i) => `${i + podio.length + 1}º ${nameOf(s.player_id)} — ${pts(s.points)}`)
+            .join('\n'),
       )
     }
   }

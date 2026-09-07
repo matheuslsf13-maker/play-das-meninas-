@@ -35,13 +35,19 @@ export type PosterGrupo = {
   rows: PosterRow[]
 }
 
-/** Arte do fechamento do dia: podio do play e o resto da classificacao. */
+/**
+ * Arte do fechamento do dia: podio do play e o resto da classificacao.
+ *
+ * `chapeu` troca a linha de cima ("RANKING DO DIA") -- e por onde a arte de um
+ * grupo so diz de qual grupo ela e.
+ */
 export async function buildDayPoster(
   data: string,
   rows: PosterRow[],
   logoUrl?: string,
+  chapeu = 'RANKING DO DIA',
 ): Promise<Blob> {
-  return desenhar(data, 'RANKING DO DIA', rows, logoUrl)
+  return desenhar(data, chapeu, rows, logoUrl)
 }
 
 /**
@@ -134,9 +140,16 @@ function blocoDeGrupo(
     c.fillText(cortar(c, r.name, 480), 250, cabeDetalhe ? meio - 1 : meio + 10)
 
     if (cabeDetalhe) {
-      c.fillStyle = 'rgba(255,255,255,.55)'
       c.font = '700 21px system-ui, Segoe UI, Arial, sans-serif'
-      c.fillText(`${r.wins}V · ${r.losses}D`, 250, meio + 23)
+      const recorde = `${r.wins}V · ${r.losses}D`
+      c.fillStyle = 'rgba(255,255,255,.55)'
+      c.fillText(recorde, 250, meio + 23)
+      if (r.statusTitle) {
+        // o status de cada uma do podio, logo depois do retrospecto
+        const x = 250 + c.measureText(recorde + '  ').width
+        c.fillStyle = '#ffb877'
+        c.fillText(`${r.statusEmoji ?? '🔥'} ${r.statusTitle}`, x, meio + 23)
+      }
     }
 
     c.textAlign = 'right'
@@ -175,8 +188,10 @@ async function desenhar(
 
   fundo(c)
   cabecalho(c, faixaTexto, chapeu, logo)
-  podio(c, rows, fotos)
-  demais(c, rows)
+  // o podio devolve onde as faixas de status terminaram, para o resto da
+  // classificacao comecar abaixo delas em vez de passar por cima
+  const fimDoPodio = podio(c, rows, fotos)
+  demais(c, rows, fimDoPodio)
   rodape(c)
 
   return await new Promise<Blob>((resolve, reject) =>
@@ -264,7 +279,11 @@ function cabecalho(
   escreverFaixa(208)
 }
 
-function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImageElement | null)[]) {
+function podio(
+  c: CanvasRenderingContext2D,
+  rows: PosterRow[],
+  fotos: (HTMLImageElement | null)[],
+): number {
   const bases = [
     { i: 1, x: 175, alturaBarra: 195, raio: 84, cor: SILVER, rotulo: '2º' },
     { i: 0, x: W / 2, alturaBarra: 250, raio: 104, cor: GOLD, rotulo: '1º' },
@@ -308,27 +327,65 @@ function podio(c: CanvasRenderingContext2D, rows: PosterRow[], fotos: (HTMLImage
     c.fillText(`${r.wins}V · ${r.losses}D`, b.x, topoBarra + 164)
   }
 
-  if (rows[0]) faixaDoTitulo(c, rows[0], chao)
+  return faixasDeStatus(c, rows, chao)
 }
 
-/** Faixa do status usado pela campea do mes, sob o podio. */
-function faixaDoTitulo(c: CanvasRenderingContext2D, r: PosterRow, chao: number) {
-  if (!r.statusTitle) return
-  const texto =
-    `${r.statusEmoji ?? '🔥'} ${r.statusTitle.toUpperCase()}` +
-    (r.statusPoints ? `  ·  +${r.statusPoints} PTS` : '')
-  c.textAlign = 'center'
-  c.font = '900 34px system-ui, Segoe UI, Arial, sans-serif'
-  const larg = Math.min(W - 120, c.measureText(texto).width + 120)
+/**
+ * Os status de quem subiu ao podio, sob os degraus.
+ *
+ * A campea leva a faixa grande com gradiente; a 2a e a 3a, quando tambem estao
+ * em chamas, ganham pastilhas menores lado a lado. Devolve o y onde o bloco
+ * termina, porque o resto da classificacao e desenhado logo abaixo.
+ */
+function faixasDeStatus(c: CanvasRenderingContext2D, rows: PosterRow[], chao: number): number {
+  const medalhistas = rows.slice(0, 3)
+  const comStatus = medalhistas.filter((r) => Boolean(r.statusTitle))
+  if (comStatus.length === 0) return chao
   const y = chao + 18
-  const g = c.createLinearGradient(W / 2 - larg / 2, 0, W / 2 + larg / 2, 0)
-  g.addColorStop(0, '#ff7a18')
-  g.addColorStop(0.5, PINK)
-  g.addColorStop(1, '#9b2fae')
-  c.fillStyle = g
-  faixa(c, W / 2 - larg / 2, y, larg, 62, 31)
-  c.fillStyle = '#fff'
-  c.fillText(texto, W / 2, y + 43)
+  c.textAlign = 'center'
+
+  // so a campea em chamas: a faixa grande de sempre (e a do fechamento do mes,
+  // que mostra quantos pontos o status valeu)
+  if (comStatus.length === 1 && rows[0]?.statusTitle) {
+    const r = rows[0]
+    const texto =
+      `${r.statusEmoji ?? '🔥'} ${(r.statusTitle as string).toUpperCase()}` +
+      (r.statusPoints ? `  ·  +${r.statusPoints} PTS` : '')
+    c.font = '900 34px system-ui, Segoe UI, Arial, sans-serif'
+    const larg = Math.min(W - 120, c.measureText(texto).width + 120)
+    const g = c.createLinearGradient(W / 2 - larg / 2, 0, W / 2 + larg / 2, 0)
+    g.addColorStop(0, '#ff7a18')
+    g.addColorStop(0.5, PINK)
+    g.addColorStop(1, '#9b2fae')
+    c.fillStyle = g
+    faixa(c, W / 2 - larg / 2, y, larg, 62, 31)
+    c.fillStyle = '#fff'
+    c.fillText(texto, W / 2, y + 43)
+    return y + 74
+  }
+
+  // mais de uma em chamas: uma fileira so de pastilhas, cada uma com o nome --
+  // duas fileiras empurrariam o resto da classificacao para fora da arte
+  const textos = comStatus.map((r) => `${r.statusEmoji ?? '🔥'} ${r.name} · ${r.statusTitle}`)
+  const cabe = (tam: number) => {
+    c.font = `800 ${tam}px system-ui, Segoe UI, Arial, sans-serif`
+    const largs = textos.map((t) => c.measureText(t).width + 44)
+    return { largs, total: largs.reduce((a, b) => a + b, 0) + (textos.length - 1) * 14 }
+  }
+  let tam = 25
+  let medida = cabe(tam)
+  while (medida.total > W - 80 && tam > 17) medida = cabe(--tam)
+
+  let x = W / 2 - Math.min(medida.total, W - 40) / 2
+  textos.forEach((t, i) => {
+    const primeira = comStatus[i] === rows[0]
+    c.fillStyle = primeira ? 'rgba(255,124,26,.34)' : 'rgba(255,124,26,.2)'
+    faixa(c, x, y, medida.largs[i], 52, 26)
+    c.fillStyle = primeira ? '#fff' : '#ffd9a8'
+    c.fillText(t, x + medida.largs[i] / 2, y + 34)
+    x += medida.largs[i] + 14
+  })
+  return y + 64
 }
 
 /**
@@ -376,11 +433,13 @@ function chamas(c: CanvasRenderingContext2D, cx: number, cy: number, raio: numbe
   c.restore()
 }
 
-function demais(c: CanvasRenderingContext2D, rows: PosterRow[]) {
-  const comTitulo = Boolean(rows[0]?.statusTitle)
-  const resto = rows.slice(3, comTitulo ? 7 : 8)
+function demais(c: CanvasRenderingContext2D, rows: PosterRow[], apartirDe: number) {
+  // a primeira linha comeca 50 abaixo do fim das faixas de status e cada uma
+  // ocupa 54; H-94 e o limite para nao encostar no rodape
+  let y = apartirDe + 50
+  const cabem = Math.max(0, Math.floor((H - 94 - y) / 54) + 1)
+  const resto = rows.slice(3, 3 + Math.min(5, cabem))
   if (resto.length === 0) return
-  let y = comTitulo ? 1090 : 1030
   c.textAlign = 'left'
   resto.forEach((r, i) => {
     c.fillStyle = 'rgba(255,255,255,.08)'
